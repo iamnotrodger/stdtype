@@ -18,7 +18,7 @@ func TestConfigDir(t *testing.T) {
 
 		t.Setenv("XDG_CONFIG_HOME", tmp)
 
-		got, err := configDir()
+		got, err := ConfigDir()
 		require.NoError(t, err)
 
 		assert.Equal(t, want, got)
@@ -34,9 +34,9 @@ func TestConfigDir(t *testing.T) {
 		tmp, err := os.UserHomeDir()
 		require.NoError(t, err)
 
-		want := filepath.Join(tmp, appName)
+		want := filepath.Join(tmp, ".config", appName)
 
-		got, err := configDir()
+		got, err := ConfigDir()
 		require.NoError(t, err)
 
 		assert.Equal(t, want, got)

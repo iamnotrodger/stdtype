@@ -10,7 +10,7 @@ import (
 
 const appName = "stdtype"
 
-func configDir() (string, error) {
+func ConfigDir() (string, error) {
 	base, err := baseConfigDir()
 	if err != nil {
 		return "", err
