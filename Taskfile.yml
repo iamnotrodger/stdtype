@@ -18,7 +18,12 @@ tasks:
   test:
     desc: Run unit tests
     cmds:
-      - go test ./...
+      - gotestsum --format=short-verbose ./... -count=1
+
+  coverage:
+    desc: Run test coverage
+    cmds:
+      - gotestsum --format=short -- -cover ./...
 
   fmt:
     desc: Format code with configured formatters
@@ -29,6 +34,7 @@ tasks:
     desc: Build all packages
     cmds:
       - go build ./...
+
 
   tidy:
     desc: Tidy go.mod and go.sum
