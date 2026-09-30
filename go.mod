@@ -6,5 +6,6 @@ require github.com/stretchr/testify v1.12.1
 
 require (
 	github.com/jonboulle/clockwork v0.5.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 )
