@@ -1,0 +1,43 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - embeddedstructfieldcheck
+    - exhaustruct
+    - exhaustruct_v5
+    - forcetypeassert
+    - funcorder
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocyclo
+    - godoclint
+    - godox
+    - gomodguard
+    - gosmopolitan
+    - ireturn
+    - noinlineerr
+    - nolintlint
+    - mnd
+    - paralleltest
+    - protogetter
+    - revive
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wsl
+    - wsl_v5
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    gocritic:
+      disabled-checks:
+        - commentFormatting
+formatters:
+  enable:
+    - gofmt
+    - goimports

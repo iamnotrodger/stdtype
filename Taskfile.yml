@@ -1,0 +1,32 @@
+version: "3"
+
+vars:
+  GOLANGCI_LINT_VERSION: v2.13.2
+
+tasks:
+  default:
+    desc: List all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  fmt:
+    desc: Format code with configured formatters
+    cmds:
+      - golangci-lint fmt
+
+  build:
+    desc: Build all packages
+    cmds:
+      - go build ./...
+
+  tidy:
+    desc: Tidy go.mod and go.sum
+    cmds:
+      - go mod tidy
+
