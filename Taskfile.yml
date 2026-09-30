@@ -15,6 +15,11 @@ tasks:
     cmds:
       - golangci-lint run
 
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test ./...
+
   fmt:
     desc: Format code with configured formatters
     cmds:
