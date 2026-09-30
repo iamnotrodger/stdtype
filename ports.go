@@ -1,13 +1,13 @@
 package stdtype
 
-type HistoryRepo interface {
-	Load() ([]Result, error)
-	Save(r Result) error
+type ResultRepo interface {
+	ListResults() ([]Result, error)
+	CreateResult(r Result) error
 }
 
 type SettingsRepo interface {
-	Load() (Settings, error)
-	Save(s Settings) error
+	GetSettings() (Settings, error)
+	UpdateSettings(s Settings) error
 }
 
 type GenerateOptions struct {
