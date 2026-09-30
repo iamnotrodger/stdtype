@@ -53,7 +53,7 @@ func writeFileWithTemp(dir string, path string, data []byte) error {
 
 	tmpName := tmp.Name()
 	defer func() {
-		os.Remove(tmpName)
+		os.Remove(tmpName) //nolint:errcheck,gosec
 	}()
 
 	_, err = tmp.Write(data)
