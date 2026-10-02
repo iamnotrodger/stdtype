@@ -11,40 +11,16 @@ import (
 
 var _ stdtype.ResultRepo = (*ResultRepo)(nil)
 
-type ResultRepoOption func(*resultRepoOptions)
-
-func WithFile(file string) ResultRepoOption {
-	return func(o *resultRepoOptions) {
-		o.file = file
-	}
-}
-
-type resultRepoOptions struct {
-	file string
-}
-
-func newResultRepoOptions(opts ...ResultRepoOption) *resultRepoOptions {
-	o := &resultRepoOptions{
-		file: "results.json",
-	}
-
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	return o
-}
-
 type ResultRepo struct {
 	dir  string
 	file string
 }
 
-func NewResultRepo(dir string, opts ...ResultRepoOption) (*ResultRepo, error) {
-	options := newResultRepoOptions(opts...)
-	path := filepath.Join(dir, options.file)
-
-	return &ResultRepo{dir, path}, nil
+func NewResultRepo(dir string, file string) (*ResultRepo, error) {
+	return &ResultRepo{
+		dir:  dir,
+		file: filepath.Join(dir, file),
+	}, nil
 }
 
 func (h *ResultRepo) ListResults() ([]stdtype.Result, error) {

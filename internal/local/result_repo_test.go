@@ -12,8 +12,10 @@ import (
 )
 
 func TestResultRepo(t *testing.T) {
+	file := "results.json"
+
 	t.Run("should load empty slice from empty directory", func(t *testing.T) {
-		resultRepo, err := NewResultRepo(t.TempDir())
+		resultRepo, err := NewResultRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
 		got, err := resultRepo.ListResults()
@@ -23,7 +25,7 @@ func TestResultRepo(t *testing.T) {
 	})
 
 	t.Run("should create result and save it to file", func(t *testing.T) {
-		resultRepo, err := NewResultRepo(t.TempDir())
+		resultRepo, err := NewResultRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
 		want := stdtype.Result{
@@ -49,7 +51,7 @@ func TestResultRepo(t *testing.T) {
 	})
 
 	t.Run("should create and list results in order", func(t *testing.T) {
-		resultRepo, err := NewResultRepo(t.TempDir())
+		resultRepo, err := NewResultRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
 		want := []stdtype.Result{
