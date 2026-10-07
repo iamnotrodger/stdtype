@@ -18,7 +18,7 @@ type GenerateOptions struct {
 
 type WordSource interface {
 	// Generate returns n words for a new test, shapted by opts.
-	Generate(n int, opts GenerateOptions) []string
+	Generate(n int, opts GenerateOptions) ([]string, error)
 	// Lists returns the available word-list ids, in display order.
 	Lists() []string
 }
