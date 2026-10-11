@@ -1,56 +1,86 @@
 package local
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 
+	"github.com/go-viper/mapstructure/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 var _ stdtype.SettingsRepo = (*SettingsRepo)(nil)
 
 type SettingsRepo struct {
-	dir  string
-	file string
+	v    *viper.Viper
+	path string
 }
 
-func NewSettingsRepo(dir string, file string) (*SettingsRepo, error) {
-	return &SettingsRepo{
-		dir:  dir,
-		file: filepath.Join(dir, file),
-	}, nil
+func NewSettingsRepo(v *viper.Viper, path string) (*SettingsRepo, error) {
+	err := setDefaultSettings(v, stdtype.DefaultSettings())
+	if err != nil {
+		return nil, errors.Wrap(err, "setDefaultSettings")
+	}
+
+	return &SettingsRepo{v, path}, nil
 }
 
 func (s *SettingsRepo) GetSettings() (stdtype.Settings, error) {
-	defaultSettings := stdtype.DefaultSettings()
+	var settings stdtype.Settings
 
-	data, err := os.ReadFile(s.file)
-	if errors.Is(err, os.ErrNotExist) {
-		return defaultSettings, nil
+	err := s.v.ReadInConfig()
+	if err != nil && !isNotFound(err) {
+		return settings, errors.Wrap(err, "viper.ReadInConfig")
 	}
 
-	if err != nil {
-		return defaultSettings, errors.Wrap(err, "os.ReadFile")
+	decodeOpts := func(dc *mapstructure.DecoderConfig) {
+		dc.WeaklyTypedInput = true
 	}
 
-	if err := json.Unmarshal(data, &defaultSettings); err != nil {
-		return defaultSettings, errors.Wrap(err, "json.Unmarshal")
+	if err := s.v.Unmarshal(&settings, decodeOpts); err != nil {
+		return settings, errors.Wrap(err, "viper.Unmarshal")
 	}
 
-	return defaultSettings, nil
+	return settings, nil
 }
 
 func (s *SettingsRepo) UpdateSettings(settings stdtype.Settings) error {
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return errors.Wrap(err, "json.MarshalIndent")
+	var values map[string]any
+	if err := mapstructure.Decode(settings, &values); err != nil {
+		return errors.Wrap(err, "mapstructure.Decode")
 	}
 
-	if err := writeFileWithTemp(s.dir, s.file, data); err != nil {
-		return errors.Wrap(err, "writeFileWithTemp")
+	for key, val := range values {
+		s.v.Set(key, val)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o750); err != nil {
+		return errors.Wrap(err, "os.Mkdir")
+	}
+
+	if err := s.v.WriteConfig(); err != nil {
+		return errors.Wrap(err, "viper.WriteConfig")
 	}
 
 	return nil
+}
+
+func setDefaultSettings(v *viper.Viper, defaults stdtype.Settings) error {
+	var values map[string]any
+	if err := mapstructure.Decode(defaults, &values); err != nil {
+		return errors.Wrap(err, "mapstructure.Decode")
+	}
+
+	for key, value := range values {
+		v.SetDefault(key, value)
+	}
+
+	return nil
+}
+
+func isNotFound(err error) bool {
+	var notFound viper.ConfigFileNotFoundError
+
+	return errors.Is(err, os.ErrNotExist) || errors.As(err, &notFound)
 }

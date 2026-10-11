@@ -68,23 +68,23 @@ type Stats struct {
 }
 
 type Settings struct {
-	Mode          string `json:"mode"`
-	Duration      int    `json:"duration"`
-	WordCount     int    `json:"word_count"`
-	VisibileLines int    `json:"visible_lines"`
-	Theme         string `json:"theme"`
-	WordList      string `json:"word_list"`
-	Punctuation   bool   `json:"punctuation"`
-	Numbers       bool   `json:"numbers"`
+	Mode        string `mapstructure:"mode"`
+	Duration    int    `mapstructure:"duration"`
+	WordCount   int    `mapstructure:"words"`
+	Lines       int    `mapstructure:"lines"`
+	Theme       string `mapstructure:"theme"`
+	WordList    string `mapstructure:"list"`
+	Punctuation bool   `mapstructure:"punctuation"`
+	Numbers     bool   `mapstructure:"numbers"`
 }
 
 func DefaultSettings() Settings {
 	return Settings{
-		Mode:          TimeMode.String(),
-		Duration:      30,
-		WordCount:     25,
-		VisibileLines: 3,
-		Theme:         "default",
-		WordList:      "english",
+		Mode:      TimeMode.String(),
+		Duration:  30,
+		WordCount: 25,
+		Lines:     3,
+		Theme:     "default",
+		WordList:  "english",
 	}
 }
