@@ -7,12 +7,18 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/iamnotrodger/stdytype/internal/local"
+	"github.com/iamnotrodger/stdytype/internal/words"
+	"github.com/iamnotrodger/stdytype/ui"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var version = "dev"
 
 func ContextWithSignal(sigs ...os.Signal) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -30,7 +36,10 @@ func ContextWithSignal(sigs ...os.Signal) context.Context {
 
 func NewRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "stdtype",
+		Use:           "stdtype",
+		Version:       version,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			v := viper.New()
 
@@ -46,6 +55,16 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "local.ConfigDir")
 			}
 
+			wordSource, err := words.NewWordSource(time.Now().UnixNano())
+			if err != nil {
+				return errors.Wrap(err, "words.NewWordSource")
+			}
+
+			resultRepo, err := local.NewResultRepo(configDir, "results.json")
+			if err != nil {
+				return errors.Wrap(err, "local.NewResultRepo")
+			}
+
 			settingsPath := filepath.Join(configDir, "settings.json")
 			settingsRepo, err := local.NewSettingsRepo(v, settingsPath)
 			if err != nil {
@@ -57,12 +76,17 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "settingsRepo.GetSettings")
 			}
 
-			fmt.Printf("%+v", settings)
+			model := ui.NewModel(wordSource, resultRepo, settings)
+			program := tea.NewProgram(model, tea.WithContext(cmd.Context()))
+			if _, err := program.Run(); err != nil {
+				return errors.Wrap(err, "program.Run")
+			}
 
 			return nil
 		},
 	}
 
+	cmd.SetVersionTemplate("{{.Version}}\n")
 	SetSettingsFlag(cmd.Flags())
 
 	return cmd
