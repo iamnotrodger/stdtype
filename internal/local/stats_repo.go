@@ -9,22 +9,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-var _ stdtype.ResultRepo = (*ResultRepo)(nil)
+var _ stdtype.StatsRepo = (*StatsRepo)(nil)
 
-type ResultRepo struct {
+type StatsRepo struct {
 	dir  string
 	file string
 }
 
-func NewResultRepo(dir string, file string) (*ResultRepo, error) {
-	return &ResultRepo{
+func NewStatsRepo(dir string, file string) (*StatsRepo, error) {
+	return &StatsRepo{
 		dir:  dir,
 		file: filepath.Join(dir, file),
 	}, nil
 }
 
-func (h *ResultRepo) ListResults() ([]stdtype.Result, error) {
-	data, err := os.ReadFile(h.file)
+func (s *StatsRepo) ListResults() ([]stdtype.Result, error) {
+	data, err := os.ReadFile(s.file)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
@@ -41,8 +41,8 @@ func (h *ResultRepo) ListResults() ([]stdtype.Result, error) {
 	return results, nil
 }
 
-func (h *ResultRepo) CreateResult(result stdtype.Result) error {
-	results, err := h.ListResults()
+func (s *StatsRepo) CreateResult(result stdtype.Result) error {
+	results, err := s.ListResults()
 	if err != nil {
 		return errors.Wrap(err, "ListResults")
 	}
@@ -54,7 +54,7 @@ func (h *ResultRepo) CreateResult(result stdtype.Result) error {
 		return errors.Wrap(err, "json.MarshalIndent")
 	}
 
-	if err := writeFileWithTemp(h.dir, h.file, data); err != nil {
+	if err := writeFileWithTemp(s.dir, s.file, data); err != nil {
 		return errors.Wrap(err, "writeFileWithTemp")
 	}
 

@@ -1,6 +1,6 @@
 package stdtype
 
-type ResultRepo interface {
+type StatsRepo interface {
 	ListResults() ([]Result, error)
 	CreateResult(r Result) error
 }
@@ -17,7 +17,7 @@ type GenerateOptions struct {
 }
 
 type WordSource interface {
-	// Generate returns n words for a new test, shapted by opts.
+	// Generate returns n words for a new test, shaped by opts.
 	Generate(n int, opts GenerateOptions) ([]string, error)
 	// Lists returns the available word-list ids, in display order.
 	Lists() []string

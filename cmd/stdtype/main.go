@@ -60,7 +60,7 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "words.NewWordSource")
 			}
 
-			resultRepo, err := local.NewResultRepo(configDir, "results.json")
+			statsRepo, err := local.NewStatsRepo(configDir, "results.json")
 			if err != nil {
 				return errors.Wrap(err, "local.NewResultRepo")
 			}
@@ -76,7 +76,7 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "settingsRepo.GetSettings")
 			}
 
-			model := ui.NewModel(wordSource, resultRepo, settings)
+			model := ui.NewModel(wordSource, statsRepo, settings)
 			program := tea.NewProgram(model, tea.WithContext(cmd.Context()))
 			if _, err := program.Run(); err != nil {
 				return errors.Wrap(err, "program.Run")

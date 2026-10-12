@@ -11,21 +11,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResultRepo(t *testing.T) {
+func TestStatsRepo(t *testing.T) {
 	file := "results.json"
 
 	t.Run("should load empty slice from empty directory", func(t *testing.T) {
-		resultRepo, err := NewResultRepo(t.TempDir(), file)
+		statsRepo, err := NewStatsRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
-		got, err := resultRepo.ListResults()
+		got, err := statsRepo.ListResults()
 		require.NoError(t, err)
 
 		assert.Empty(t, got)
 	})
 
 	t.Run("should create result and save it to file", func(t *testing.T) {
-		resultRepo, err := NewResultRepo(t.TempDir(), file)
+		statsRepo, err := NewStatsRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
 		want := stdtype.Result{
@@ -36,10 +36,10 @@ func TestResultRepo(t *testing.T) {
 			Accuracy:  50.0,
 		}
 
-		err = resultRepo.CreateResult(want)
+		err = statsRepo.CreateResult(want)
 		require.NoError(t, err)
 
-		data, err := os.ReadFile(resultRepo.file)
+		data, err := os.ReadFile(statsRepo.file)
 		require.NoError(t, err)
 
 		var got []stdtype.Result
@@ -51,7 +51,7 @@ func TestResultRepo(t *testing.T) {
 	})
 
 	t.Run("should create and list results in order", func(t *testing.T) {
-		resultRepo, err := NewResultRepo(t.TempDir(), file)
+		statsRepo, err := NewStatsRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
 		want := []stdtype.Result{
@@ -72,11 +72,11 @@ func TestResultRepo(t *testing.T) {
 		}
 
 		for _, r := range want {
-			err = resultRepo.CreateResult(r)
+			err = statsRepo.CreateResult(r)
 			require.NoError(t, err)
 		}
 
-		got, err := resultRepo.ListResults()
+		got, err := statsRepo.ListResults()
 		require.NoError(t, err)
 
 		require.Len(t, got, len(want))
