@@ -40,16 +40,16 @@ type Stats struct {
 	IncorrectChars int `json:"incorrect_chars,omitempty"`
 	MissedChars    int `json:"missing_chars,omitempty"`
 
-	TypedChars        int
-	Keystrokes        int
-	CorrectKeystrokes int
+	TypedChars        int `json:"typed_chars,omitempty"`
+	Keystrokes        int `json:"key_strokes,omitempty"`
+	CorrectKeystrokes int `json:"correct_keystrokes,omitempty"`
 }
 
 // Per-second WPM samples (chars/5 per 1/60 min).
 type Samples struct {
-	WPM []float64
-	Raw []float64
-	Err []int
+	WPM []float64 `json:"wpm,omitempty"`
+	Raw []float64 `json:"raw,omitempty"`
+	Err []int     `json:"err,omitempty"`
 }
 
 // Result is a persisted record of one complete test.
@@ -60,9 +60,9 @@ type Result struct {
 	Stats       Stats     `json:"stats"`
 	Consistency float64   `json:"consistency"`
 
-	Invalid       bool   `json:"invalid,omitempty"`
-	InvalidReason string `json:"invalid_reason,omitempty"`
-	Samples       Samples
+	Invalid       bool    `json:"invalid,omitempty"`
+	InvalidReason string  `json:"invalid_reason,omitempty"`
+	Samples       Samples `json:"samples"`
 }
 
 type TypeTest struct {

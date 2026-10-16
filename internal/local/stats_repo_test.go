@@ -28,7 +28,7 @@ func TestStatsRepo(t *testing.T) {
 		statsRepo, err := NewStatsRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
-		want := stdtype.Result{
+		want := &stdtype.Result{
 			Timestamp: time.Unix(100, 0),
 			Mode:      stdtype.WordsMode.String(),
 			Amount:    30,
@@ -56,7 +56,7 @@ func TestStatsRepo(t *testing.T) {
 		statsRepo, err := NewStatsRepo(t.TempDir(), file)
 		require.NoError(t, err)
 
-		want := []stdtype.Result{
+		want := []*stdtype.Result{
 			{
 				Timestamp: time.Unix(100, 0),
 				Mode:      stdtype.WordsMode.String(),
