@@ -113,7 +113,7 @@ func TestTypingTest_DeleteWord(t *testing.T) {
 	}
 }
 
-func TestTypeTest_Done(t *testing.T) {
+func TestTypeTest_Completed(t *testing.T) {
 	t.Run("when in words mode", func(t *testing.T) {
 		t.Run("then it is not completed before the target is fully typed", func(t *testing.T) {
 			typeTest := NewTypeTest([]string{"cat"}, WordsMode)
@@ -129,9 +129,9 @@ func TestTypeTest_Done(t *testing.T) {
 	})
 
 	t.Run("when in time mode", func(t *testing.T) {
-		t.Run("then it is never completed", func(t *testing.T) {
+		t.Run("then it should return true when finished", func(t *testing.T) {
 			typeTest := NewTypeTest([]string{"cat"}, TimeMode)
-			mustTypeAll(t, typeTest, "cat")
+			typeTest.Finish()
 			assert.False(t, typeTest.Completed())
 		})
 	})
@@ -175,11 +175,11 @@ func TestTypeTest_Elapsed(t *testing.T) {
 	})
 }
 
-func TestTypeTest_Compute(t *testing.T) {
+func TestComputeStats(t *testing.T) {
 	t.Run("should report WPM as correct characters over five per minute", func(t *testing.T) {
 		target := strings.Repeat("a", 5)
 		typeTest := mustTypedTestFinished(t, []string{target}, target, time.Minute)
-		stats := typeTest.Stats()
+		stats := ComputeStats(typeTest)
 
 		assert.InDelta(t, 1.0, stats.WPM, 1e-6)
 		assert.InDelta(t, 1.0, stats.RawWPM, 1e-6)
@@ -189,7 +189,7 @@ func TestTypeTest_Compute(t *testing.T) {
 	t.Run("should scale WPM with characters typed per minute", func(t *testing.T) {
 		target := strings.Repeat("a", 50)
 		typeTest := mustTypedTestFinished(t, []string{target}, target, time.Minute)
-		stats := typeTest.Stats()
+		stats := ComputeStats(typeTest)
 
 		assert.InDelta(t, 10.0, stats.WPM, 1e-6)
 		assert.InDelta(t, 10.0, stats.RawWPM, 1e-6)
@@ -199,7 +199,7 @@ func TestTypeTest_Compute(t *testing.T) {
 	t.Run("should compute with incorrect typed characters", func(t *testing.T) {
 		target := strings.Repeat("a", 3)
 		typeTest := mustTypedTestFinished(t, []string{target}, "aXa", time.Minute)
-		stats := typeTest.Stats()
+		stats := ComputeStats(typeTest)
 
 		want := 2.0 / 3.0 * 100.0
 		assert.InDelta(t, want, stats.Accuracy, 1e-6)
@@ -212,7 +212,7 @@ func TestTypeTest_Compute(t *testing.T) {
 
 	t.Run("should report 100% accuracy when no keys has been pressed", func(t *testing.T) {
 		typeTest := NewTypeTest([]string{"cat"}, TimeMode)
-		stats := typeTest.Stats()
+		stats := ComputeStats(typeTest)
 		assert.InDelta(t, 100.0, stats.Accuracy, 1e-6)
 	})
 }

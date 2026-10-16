@@ -7,6 +7,7 @@ type Mode int
 const (
 	TimeMode Mode = iota
 	WordsMode
+	InvalidMode
 )
 
 func (m Mode) String() string {
@@ -17,22 +18,51 @@ func (m Mode) String() string {
 	return "time"
 }
 
-// Result is a persisted record of one complete test.
-type Result struct {
-	Timestamp   time.Time `json:"timestamp"`
-	Mode        string    `json:"mode"`
-	Amount      int       `json:"amount"` // seconds (time mode) or word count
-	WPM         float64   `json:"wpm"`
-	RawWPM      float64   `json:"raw_wpm"`
-	Accuracy    float64   `json:"accuracy"`
-	Consistency float64   `json:"consistency"`
+func ParseMode(m string) Mode {
+	switch m {
+	case TimeMode.String():
+		return TimeMode
+	case WordsMode.String():
+		return WordsMode
+	default:
+		return InvalidMode
+	}
+}
+
+// Stats is a snapshot of performance for a test, computed for its current
+// state and elapsed time.
+type Stats struct {
+	WPM      float64 `json:"wpm"`
+	RawWPM   float64 `json:"raw_wpm"`
+	Accuracy float64 `json:"accuracy"`
 
 	CorrectChars   int `json:"correct_chars,omitempty"`
 	IncorrectChars int `json:"incorrect_chars,omitempty"`
 	MissedChars    int `json:"missing_chars,omitempty"`
 
+	TypedChars        int
+	Keystrokes        int
+	CorrectKeystrokes int
+}
+
+// Per-second WPM samples (chars/5 per 1/60 min).
+type Samples struct {
+	WPM []float64
+	Raw []float64
+	Err []int
+}
+
+// Result is a persisted record of one complete test.
+type Result struct {
+	Timestamp   time.Time `json:"timestamp"`
+	Mode        string    `json:"mode"`
+	Amount      int       `json:"amount"` // seconds (time mode) or word count
+	Stats       Stats     `json:"stats"`
+	Consistency float64   `json:"consistency"`
+
 	Invalid       bool   `json:"invalid,omitempty"`
 	InvalidReason string `json:"invalid_reason,omitempty"`
+	Samples       Samples
 }
 
 type TypeTest struct {
@@ -49,22 +79,6 @@ type TypeTest struct {
 	totalKeystrokes   int
 
 	clock func() time.Time
-}
-
-// Stats is a snapshot of performance for a test, compuated for its current
-// state and elapsed time.
-type Stats struct {
-	WPM          float64
-	RawWPM       float64
-	Accuracy     float64
-	Consistency  float64
-	CorrectChars int
-	TypedChars   int
-	Keystrokes   int
-
-	IncorrectChars    int
-	MissedChars       int
-	CorrectKeystrokes int
 }
 
 type Settings struct {

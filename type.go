@@ -65,7 +65,14 @@ func (t *TypeTest) Started() bool {
 }
 
 func (t *TypeTest) Completed() bool {
-	return t.Mode == WordsMode && len(t.Typed) >= len(t.Target)
+	switch t.Mode {
+	case WordsMode:
+		return len(t.Typed) >= len(t.Target)
+	case TimeMode:
+		return t.finished
+	default:
+		return false
+	}
 }
 
 func (t *TypeTest) Finish() {
@@ -102,9 +109,9 @@ func (t *TypeTest) CorrectChars() int {
 	return n
 }
 
-// Stats WPM uses the standard 5-characters-per-word convention over correct characters;
+// ComputeStats WPM uses the standard 5-characters-per-word convention over correct characters;
 // raw uses all typed characters.
-func (t *TypeTest) Stats() Stats {
+func ComputeStats(t *TypeTest) Stats {
 	mins := t.Elapsed().Minutes()
 	correct := t.CorrectChars()
 	typed := len(t.Typed)
