@@ -32,8 +32,10 @@ func TestStatsRepo(t *testing.T) {
 			Timestamp: time.Unix(100, 0),
 			Mode:      stdtype.WordsMode.String(),
 			Amount:    30,
-			WPM:       50.0,
-			Accuracy:  50.0,
+			Stats: stdtype.Stats{
+				WPM:      50.0,
+				Accuracy: 50.0,
+			},
 		}
 
 		err = statsRepo.CreateResult(want)
@@ -59,15 +61,19 @@ func TestStatsRepo(t *testing.T) {
 				Timestamp: time.Unix(100, 0),
 				Mode:      stdtype.WordsMode.String(),
 				Amount:    30,
-				WPM:       50.0,
-				Accuracy:  50.0,
+				Stats: stdtype.Stats{
+					WPM:      50.0,
+					Accuracy: 50.0,
+				},
 			},
 			{
 				Timestamp: time.Unix(200, 0),
 				Mode:      stdtype.TimeMode.String(),
 				Amount:    30,
-				WPM:       60.0,
-				Accuracy:  100.0,
+				Stats: stdtype.Stats{
+					WPM:      60.0,
+					Accuracy: 100.0,
+				},
 			},
 		}
 

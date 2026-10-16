@@ -1,8 +1,8 @@
 package stdtype
 
 type StatsRepo interface {
-	ListResults() ([]Result, error)
-	CreateResult(r Result) error
+	ListResults() ([]*Result, error)
+	CreateResult(r *Result) error
 }
 
 type SettingsRepo interface {

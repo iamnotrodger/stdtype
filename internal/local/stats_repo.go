@@ -23,7 +23,7 @@ func NewStatsRepo(dir string, file string) (*StatsRepo, error) {
 	}, nil
 }
 
-func (s *StatsRepo) ListResults() ([]stdtype.Result, error) {
+func (s *StatsRepo) ListResults() ([]*stdtype.Result, error) {
 	data, err := os.ReadFile(s.file)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -33,7 +33,7 @@ func (s *StatsRepo) ListResults() ([]stdtype.Result, error) {
 		return nil, errors.Wrap(err, "os.ReadFile")
 	}
 
-	var results []stdtype.Result
+	var results []*stdtype.Result
 	if err := json.Unmarshal(data, &results); err != nil {
 		return nil, errors.Wrap(err, "json.Unmarshal")
 	}
@@ -41,7 +41,7 @@ func (s *StatsRepo) ListResults() ([]stdtype.Result, error) {
 	return results, nil
 }
 
-func (s *StatsRepo) CreateResult(result stdtype.Result) error {
+func (s *StatsRepo) CreateResult(result *stdtype.Result) error {
 	results, err := s.ListResults()
 	if err != nil {
 		return errors.Wrap(err, "ListResults")
