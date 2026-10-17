@@ -31,39 +31,28 @@ type view struct {
 }
 
 func (v view) render() string {
-	spans := common.WrapLineSpans(v.target, v.wrap)
+	spans := wrapLineSpans(v.target, v.wrap)
+	strip := make([]string, 0, len(spans))
 
-	var strip []string
-	for li, s := range spans {
+	for _, s := range spans {
 		ln := v.line(s)
 		if pad := v.wrap - lipgloss.Width(ln); pad > 0 {
 			ln += strings.Repeat(" ", pad)
 		}
 
 		strip = append(strip, ln)
-
-		if li < len(spans)-1 {
-			for range common.LineGap {
-				strip = append(strip, "")
-			}
-		}
 	}
 
-	vh := common.ViewportRows(common.VisibleLines(v.visibleLine))
-	offset := common.LineOffset(v.target, v.wrap, v.visibleLine, v.caret())
+	lines := visibleLines(v.visibleLine)
+	offset := lineOffset(spans, lines, v.caret())
 
-	if maxOffset := len(strip) - vh; offset > maxOffset {
-		offset = maxOffset
-	}
+	maxOffset := len(strip) - lines
+	offset = max(0, min(offset, maxOffset))
 
-	if offset < 0 {
-		offset = 0
-	}
-
-	end := min(offset+vh, len(strip))
+	end := min(offset+lines, len(strip))
 	out := append([]string{}, strip[offset:end]...)
 
-	for len(out) < vh {
+	for len(out) < lines {
 		out = append(out, "")
 	}
 
@@ -101,23 +90,23 @@ func (v view) modeBar() string {
 	return modes + sep + strings.Join(labels, " ")
 }
 
-func (v view) line(s common.LineSpan) string {
+func (v view) line(s lineSpan) string {
 	var b strings.Builder
 
 	if v.fade < 1 {
 		fs := animation.FadeStyle(v.fade)
-		for i := s.Start; i < s.End; i++ {
+		for i := s.start; i < s.end; i++ {
 			b.WriteString(fs.Render(string(v.target[i])))
 		}
 
 		return b.String()
 	}
 
-	for i := s.Start; i < s.End; i++ {
+	for i := s.start; i < s.end; i++ {
 		b.WriteString(v.character(i))
 	}
 
-	if v.caret() == s.End {
+	if v.caret() == s.end {
 		b.WriteString(v.caretCell(" "))
 	}
 

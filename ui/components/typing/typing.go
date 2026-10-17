@@ -90,7 +90,7 @@ func (m Model) View() string {
 		wordCount:   settings.WordCount,
 		visibleLine: settings.Lines,
 		remaining:   remaining,
-		wrap:        common.WrapWidth(w),
+		wrap:        wrapWidth(w),
 		caretCell:   m.caretCell,
 		fade:        m.fade.Value,
 	}
