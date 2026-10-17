@@ -74,7 +74,7 @@ func (m Model) statsView() string {
 		stat("test type", testType), gap,
 		stat("raw", fmt.Sprintf("%.0f", stats.RawWPM)), gap,
 		stat("characters", chars), gap,
-		stat("consistency", fmt.Sprintf("%.0f", result.Consistency)), gap,
+		stat("consistency", fmt.Sprintf("%.0f%%", result.Consistency)), gap,
 		stat("time", fmt.Sprintf("%.1fs", result.Duration.Seconds())), gap,
 	)
 
