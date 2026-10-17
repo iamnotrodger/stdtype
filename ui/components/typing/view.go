@@ -2,12 +2,12 @@ package typing
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
+	"github.com/iamnotrodger/stdytype/ui/animation"
 	"github.com/iamnotrodger/stdytype/ui/common"
 	"github.com/iamnotrodger/stdytype/ui/themes"
 )
@@ -105,7 +105,7 @@ func (v view) line(s common.LineSpan) string {
 	var b strings.Builder
 
 	if v.fade < 1 {
-		fs := fadeStyle(v.fade)
+		fs := animation.FadeStyle(v.fade)
 		for i := s.Start; i < s.End; i++ {
 			b.WriteString(fs.Render(string(v.target[i])))
 		}
@@ -154,7 +154,7 @@ func (v view) counter() string {
 	if v.mode == stdtype.TimeMode {
 		remaining := strconv.Itoa(max(v.remaining, 0))
 
-		return v.fadeRender(remaining)
+		return animation.FadeRender(v.fade, remaining)
 	}
 
 	count := 0
@@ -166,22 +166,5 @@ func (v view) counter() string {
 
 	progress := fmt.Sprintf("%d/%d", count, v.wordCount)
 
-	return v.fadeRender(progress)
-}
-
-func (v view) fadeRender(str string) string {
-	if v.fade >= 1 {
-		return str
-	}
-
-	return fadeStyle(v.fade).Render(str)
-}
-
-func fadeStyle(t float64) lipgloss.Style {
-	const gray = 0x88
-
-	v := int(math.Round(float64(gray) * t))
-	hex := fmt.Sprintf("#%02x%02x%02x", v, v, v)
-
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
+	return animation.FadeRender(v.fade, progress)
 }
