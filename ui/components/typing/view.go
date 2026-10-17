@@ -152,17 +152,30 @@ func (v view) caret() int {
 
 func (v view) counter() string {
 	if v.mode == stdtype.TimeMode {
-		return strconv.Itoa(max(v.remaining, 0))
+		remaining := strconv.Itoa(max(v.remaining, 0))
+
+		return v.fadeRender(remaining)
 	}
 
-	words := 0
-
+	count := 0
 	typed := strings.TrimRight(string(v.typed), " ")
+
+  // TODO: check if words are typed correctly
 	if typed != "" {
-		words = strings.Count(typed, " ") + 1
+		count = strings.Count(typed, " ")
 	}
 
-	return fmt.Sprintf("%d/%d", words, v.wordCount)
+	progress := fmt.Sprintf("%d/%d", count, v.wordCount)
+
+	return v.fadeRender(progress)
+}
+
+func (v view) fadeRender(str string) string {
+	if v.fade >= 1 {
+		return str
+	}
+
+	return fadeStyle(v.fade).Render(str)
 }
 
 func fadeStyle(t float64) lipgloss.Style {
