@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
+	"github.com/iamnotrodger/stdytype/ui/animation"
 	"github.com/iamnotrodger/stdytype/ui/components/typing"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
@@ -67,6 +68,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case typing.TickMsg:
 		return m.updateTyping(msg)
+	case animation.Msg:
+		return m.updateTyping(msg)
 
 	case tea.KeyPressMsg:
 		switch {
@@ -74,8 +77,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case key.Matches(msg, keys.Keys.Restart):
-			// TODO: log error
-			m.typing, _ = m.typing.Reset()
+			m.typing, cmd = m.typing.Restart()
 			m.screen = screenTyping
 
 			return m, cmd
@@ -86,7 +88,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case screenTyping:
 			return m.updateTyping(msg)
 		case screenResult:
-			// TODO: update result
 			return m, nil
 		}
 	}

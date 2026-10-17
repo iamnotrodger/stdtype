@@ -27,8 +27,7 @@ type view struct {
 
 	caretCell func(ch string) string
 
-	scroll float64
-	// fade   float64
+	fade float64
 }
 
 func (v view) render() string {
@@ -51,18 +50,18 @@ func (v view) render() string {
 	}
 
 	vh := common.ViewportRows(common.VisibleLines(v.visibleLine))
-	off := int(math.Round(v.scroll))
+	offset := common.LineOffset(v.target, v.wrap, v.visibleLine, v.caret())
 
-	if maxOff := len(strip) - vh; off > maxOff {
-		off = maxOff
+	if maxOffset := len(strip) - vh; offset > maxOffset {
+		offset = maxOffset
 	}
 
-	if off < 0 {
-		off = 0
+	if offset < 0 {
+		offset = 0
 	}
 
-	end := min(off+vh, len(strip))
-	out := append([]string{}, strip[off:end]...)
+	end := min(offset+vh, len(strip))
+	out := append([]string{}, strip[offset:end]...)
 
 	for len(out) < vh {
 		out = append(out, "")
@@ -104,7 +103,15 @@ func (v view) modeBar() string {
 
 func (v view) line(s common.LineSpan) string {
 	var b strings.Builder
-	// TODO: fade
+
+	if v.fade < 1 {
+		fs := fadeStyle(v.fade)
+		for i := s.Start; i < s.End; i++ {
+			b.WriteString(fs.Render(string(v.target[i])))
+		}
+
+		return b.String()
+	}
 
 	for i := s.Start; i < s.End; i++ {
 		b.WriteString(v.character(i))
@@ -156,4 +163,13 @@ func (v view) counter() string {
 	}
 
 	return fmt.Sprintf("%d/%d", words, v.wordCount)
+}
+
+func fadeStyle(t float64) lipgloss.Style {
+	const gray = 0x88
+
+	v := int(math.Round(float64(gray) * t))
+	hex := fmt.Sprintf("#%02x%02x%02x", v, v, v)
+
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
 }

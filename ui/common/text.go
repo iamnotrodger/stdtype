@@ -19,15 +19,7 @@ func WrapWidth(width int) int {
 }
 
 func VisibleLines(n int) int {
-	if n < 2 {
-		return 3
-	}
-
-	if n > 6 {
-		return 6
-	}
-
-	return n
+	return min(max(n, 3), 6)
 }
 
 func WrapLineSpans(target []rune, wrap int) []LineSpan {
@@ -73,13 +65,13 @@ func ViewportRows(visible int) int {
 	return visible + (visible-1)*LineGap
 }
 
-func RestingScroll(target []rune, wrap, visible, caret int) float64 {
+func LineOffset(target []rune, wrap, visible, caret int) int {
 	spans := WrapLineSpans(target, wrap)
 	top := CaretLineIndex(spans, caret) - 1
 
 	if top+visible > len(spans) {
-		top = len(spans) - visible
+		top = max(0, len(spans)-visible)
 	}
 
-	return float64(min(0, top*(1+LineGap)))
+	return top * (1 + LineGap)
 }

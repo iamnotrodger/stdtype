@@ -8,10 +8,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
+	"github.com/iamnotrodger/stdytype/ui/animation"
 	"github.com/iamnotrodger/stdytype/ui/common"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
-	"github.com/pkg/errors"
 )
 
 type TickMsg time.Time
@@ -36,19 +36,22 @@ type Model struct {
 
 	caret cursor.Model
 	keys  *keys.KeyMap
+	fade  animation.Fade
 }
 
 func NewModel(appCtx *appctx.Context, wordSource stdtype.WordSource) (Model, error) {
+	caret := cursor.New()
+	caret.Focus()
+
 	m := Model{
 		appCtx:     appCtx,
 		wordSource: wordSource,
-		caret:      cursor.New(),
+		caret:      caret,
 		keys:       keys.Keys,
+		fade:       animation.NewFade(),
 	}
 
-	m.caret.Focus()
-
-	return m.Reset()
+	return m.reset(), nil
 }
 
 func (t Model) Init() tea.Cmd {
@@ -59,6 +62,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TickMsg:
 		return m.onTick()
+	case animation.Msg:
+		return m.onAnimate()
 	case tea.KeyPressMsg:
 		return m.onKey(msg)
 	}
@@ -87,6 +92,7 @@ func (m Model) View() string {
 		remaining:   remaining,
 		wrap:        common.WrapWidth(w),
 		caretCell:   m.caretCell,
+		fade:        m.fade.Value,
 	}
 
 	count := v.counter()
@@ -106,20 +112,24 @@ func (m Model) View() string {
 	}.View()
 }
 
-func (m Model) Reset() (Model, error) {
+func (m Model) reset() Model {
 	settings := m.appCtx.Settings
+	mode := stdtype.ParseMode(settings.Mode)
 
-	words, err := m.wordSource.Generate(
-		settings.WordCount,
+	count := settings.WordCount
+	if mode == stdtype.TimeMode {
+		count = settings.Duration*3 + 30
+	}
+
+	// TODO: log error
+	words, _ := m.wordSource.Generate(
+		count,
 		stdtype.GenerateOptions{
 			List:        settings.WordList,
 			Punctuation: settings.Punctuation,
 			Numbers:     settings.Numbers,
 		},
 	)
-	if err != nil {
-		return m, errors.Wrap(err, "wordSource.Generate")
-	}
 
 	m.mode = stdtype.ParseMode(settings.Mode)
 	m.test = stdtype.NewTypeTest(words, m.mode)
@@ -128,7 +138,14 @@ func (m Model) Reset() (Model, error) {
 	m.result = nil
 	m.afkSeconds = 0
 
-	return m, nil
+	return m
+}
+
+func (m Model) Restart() (Model, tea.Cmd) {
+	m = m.reset()
+	m.fade.Start()
+
+	return m, animation.Tick()
 }
 
 func (m Model) Completed() bool {
@@ -237,4 +254,12 @@ func (m Model) onFinish() Model {
 	m.result = result
 
 	return m
+}
+
+func (m Model) onAnimate() (Model, tea.Cmd) {
+	if m.fade.Update() {
+		return m, animation.Tick()
+	}
+
+	return m, nil
 }
