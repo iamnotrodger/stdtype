@@ -44,8 +44,8 @@ func (l Layout) GetFooter() string {
 
 func DefaultFooter() string {
 	keys := []struct {
-		binding  key.Binding
-		icon string
+		binding key.Binding
+		icon    string
 	}{
 		{
 			keys.Keys.Restart,

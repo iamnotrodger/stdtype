@@ -160,7 +160,6 @@ func (v view) counter() string {
 	count := 0
 	typed := strings.TrimRight(string(v.typed), " ")
 
-  // TODO: check if words are typed correctly
 	if typed != "" {
 		count = strings.Count(typed, " ")
 	}

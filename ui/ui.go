@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
+	"github.com/iamnotrodger/stdytype/ui/components/result"
 	"github.com/iamnotrodger/stdytype/ui/components/typing"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
@@ -24,10 +25,10 @@ type Model struct {
 	wordSource stdtype.WordSource
 	statsRepo  stdtype.StatsRepo
 
-	screen screen
-
 	typing typing.Model
-	result *stdtype.Result
+	result result.Model
+
+	screen screen
 }
 
 func NewModel(
@@ -40,15 +41,13 @@ func NewModel(
 		Theme:    themes.Default(),
 	}
 
-	// TODO: handle this error
-	typing, _ := typing.NewModel(appCtx, wordSource)
-
 	return Model{
 		appCtx:     appCtx,
 		wordSource: wordSource,
 		statsRepo:  statsRepo,
+		typing:     typing.NewModel(appCtx, wordSource),
+		result:     result.NewMode(appCtx),
 		screen:     screenTyping,
-		typing:     typing,
 	}
 }
 
@@ -96,22 +95,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	v := tea.NewView(m.typing.View())
+	v := tea.NewView(m.viewScreen(m.screen))
 	v.AltScreen = true
 
 	return v
+}
+
+func (m Model) viewScreen(s screen) string {
+	switch s {
+	case screenResult:
+		return m.result.View()
+	default:
+		return m.typing.View()
+	}
 }
 
 func (m Model) updateTyping(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	m.typing, cmd = m.typing.Update(msg)
+
 	if m.typing.Completed() {
-		m.result = m.typing.Result()
-		// TODO: log error
-		m.statsRepo.CreateResult(m.result) // nolint:errcheck,gosec
-		m.screen = screenResult
+		return m.onTestComplete()
 	}
+
+	return m, cmd
+}
+
+func (m Model) onTestComplete() (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	result := m.typing.Result()
+
+	m.statsRepo.CreateResult(result) // nolint:errcheck,gosec
+
+	m.result = m.result.SetResult(result)
+	m.screen = screenResult
 
 	return m, cmd
 }
