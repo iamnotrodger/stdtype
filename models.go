@@ -60,9 +60,10 @@ type Result struct {
 	Stats       Stats     `json:"stats"`
 	Consistency float64   `json:"consistency"`
 
-	Invalid       bool    `json:"invalid,omitempty"`
-	InvalidReason string  `json:"invalid_reason,omitempty"`
-	Samples       Samples `json:"samples"`
+	Invalid       bool          `json:"invalid,omitempty"`
+	InvalidReason string        `json:"invalid_reason,omitempty"`
+	Samples       Samples       `json:"samples"`
+	Duration      time.Duration `json:"duration"`
 }
 
 type TypeTest struct {

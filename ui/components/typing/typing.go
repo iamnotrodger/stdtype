@@ -39,7 +39,7 @@ type Model struct {
 	fade  animation.Fade
 }
 
-func NewModel(appCtx *appctx.Context, wordSource stdtype.WordSource) (Model, error) {
+func NewModel(appCtx *appctx.Context, wordSource stdtype.WordSource) Model {
 	caret := cursor.New()
 	caret.Focus()
 
@@ -51,7 +51,7 @@ func NewModel(appCtx *appctx.Context, wordSource stdtype.WordSource) (Model, err
 		fade:       animation.NewFade(),
 	}
 
-	return m.reset(), nil
+	return m.reset()
 }
 
 func (t Model) Init() tea.Cmd {
@@ -244,6 +244,7 @@ func (m Model) onFinish() Model {
 		Stats:       stats,
 		Consistency: consistency,
 		Samples:     m.samples,
+		Duration:    m.test.Elapsed(),
 	}
 
 	if stdtype.IsAFK(m.afkSeconds, int(m.test.Elapsed())) {
