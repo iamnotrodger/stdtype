@@ -43,13 +43,30 @@ func (l Layout) GetFooter() string {
 }
 
 func DefaultFooter() string {
-	keys := []key.Binding{keys.Keys.Restart, keys.Keys.Menu, keys.Keys.Quit}
-	out := make([]string, 0, len(keys))
-
-	for _, k := range keys {
-		h := k.Help()
-		out = append(out, h.Key+" "+h.Desc)
+	keys := []struct {
+		binding  key.Binding
+		icon string
+	}{
+		{
+			keys.Keys.Restart,
+			"",
+		},
+		{
+			keys.Keys.Menu,
+			"󰍜",
+		},
+		{
+			keys.Keys.Quit,
+			"󰈆",
+		},
 	}
 
-	return strings.Join(out, " · ")
+	footer := make([]string, 0, len(keys))
+
+	for _, k := range keys {
+		h := k.binding.Help()
+		footer = append(footer, h.Key+" "+k.icon)
+	}
+
+	return strings.Join(footer, " · ")
 }
