@@ -44,7 +44,7 @@ func TestStatsRepo(t *testing.T) {
 		data, err := os.ReadFile(statsRepo.file)
 		require.NoError(t, err)
 
-		var got []stdtype.Result
+		var got []*stdtype.Result
 		err = json.Unmarshal(data, &got)
 		require.NoError(t, err)
 

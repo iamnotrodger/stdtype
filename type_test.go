@@ -132,7 +132,7 @@ func TestTypeTest_Completed(t *testing.T) {
 		t.Run("then it should return true when finished", func(t *testing.T) {
 			typeTest := NewTypeTest([]string{"cat"}, TimeMode)
 			typeTest.Finish()
-			assert.False(t, typeTest.Completed())
+			assert.True(t, typeTest.Completed())
 		})
 	})
 }
