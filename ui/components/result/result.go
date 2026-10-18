@@ -68,7 +68,7 @@ func (m Model) statsView() string {
 
 	headline := lipgloss.JoinHorizontal(lipgloss.Top,
 		stat("wpm", fmt.Sprintf("%.0f", stats.WPM)), gap,
-		stat("accuracy", fmt.Sprintf("%.0f", stats.Accuracy)),
+		stat("accuracy", fmt.Sprintf("%.0f%%", stats.Accuracy)),
 	)
 
 	testType := fmt.Sprintf("%s %d", result.Mode, result.Amount)
