@@ -4,10 +4,12 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
 	commandpalette "github.com/iamnotrodger/stdytype/ui/components/commadpalette"
 	"github.com/iamnotrodger/stdytype/ui/components/result"
+	"github.com/iamnotrodger/stdytype/ui/components/stats"
 	"github.com/iamnotrodger/stdytype/ui/components/typing"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
@@ -29,6 +31,7 @@ type Model struct {
 
 	typing  typing.Model
 	result  result.Model
+	stats   stats.Model
 	palette commandpalette.Model
 
 	screen      screen
@@ -54,6 +57,7 @@ func NewModel(
 		screen:     screenTyping,
 		typing:     typing.NewModel(appCtx, wordSource, &settings),
 		result:     result.NewMode(appCtx),
+		stats:      stats.NewModel(appCtx),
 		palette:    commandpalette.NewModel(*appCtx, BuildCommands(*theme.Default)),
 	}
 }
@@ -70,12 +74,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTyping(msg)
 	case animation.Msg:
 		return m.updateTyping(msg)
+	case stats.ResultMsg:
+		return m.onResult(msg.Result)
 	case commandpalette.CommandMsg:
 		return m.onCommand(msg)
 	case restartMsg:
 		return m.onRestart()
 	case navMsg:
-		return m.onNav(msg)
+		return m.onNavigate(msg)
 
 	case tea.KeyPressMsg:
 		switch {
@@ -95,6 +101,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.screen {
 		case screenTyping:
 			return m.updateTyping(msg)
+		case screenStats:
+			return m.updateStats(msg)
 		case screenResult:
 			return m, nil
 		}
@@ -132,6 +140,8 @@ func (m Model) viewScreen(s screen) string {
 	switch s {
 	case screenResult:
 		return m.result.View()
+	case screenStats:
+		return m.stats.View()
 	default:
 		return m.typing.View()
 	}
@@ -145,6 +155,13 @@ func (m Model) updateTyping(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.typing.Completed() {
 		return m.onComplete()
 	}
+
+	return m, cmd
+}
+
+func (m Model) updateStats(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.stats, cmd = m.stats.Update(msg)
 
 	return m, cmd
 }
@@ -163,17 +180,25 @@ func (m Model) onResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.typing.SetSize(w, h)
 	m.result.SetSize(w, h)
 	m.palette.SetSize(w, h)
+	m.stats.SetSize(w, h)
 
 	return m, nil
 }
 
 func (m Model) onComplete() (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
 	result := m.typing.Result()
 
-	// TODO: log error.
-	m.statsRepo.CreateResult(result) // nolint:errcheck,gosec
+	err := m.statsRepo.CreateResult(result) // nolint:errcheck,gosec
+	if err != nil {
+		tea.Printf("error %s", err.Error())
+	}
+
+	return m.onResult(result)
+}
+
+func (m Model) onResult(result *stdtype.Result) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	m.result.SetResult(result)
 	m.screen = screenResult
 
@@ -185,6 +210,7 @@ func (m Model) onRestart() (tea.Model, tea.Cmd) {
 
 	m.typing, cmd = m.typing.Restart()
 	m.screen = screenTyping
+	m.paletteOpen = false
 
 	return m, cmd
 }
@@ -208,7 +234,18 @@ func (m Model) onCommand(msg commandpalette.CommandMsg) (tea.Model, tea.Cmd) {
 	return m, msg.Command.Run
 }
 
-func (m Model) onNav(msg navMsg) (tea.Model, tea.Cmd) {
+func (m Model) onNavigate(msg navMsg) (tea.Model, tea.Cmd) {
+	if msg.screen == screenStats {
+		results, err := m.statsRepo.ListResults()
+		if err != nil {
+			tea.Printf("error %s", err.Error())
+
+			return m, nil
+		}
+
+		m.stats.SetResults(results)
+	}
+
 	m.screen = msg.screen
 
 	return m, nil
