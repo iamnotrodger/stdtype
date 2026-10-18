@@ -8,59 +8,61 @@ import (
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/common"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
+	"github.com/iamnotrodger/stdytype/ui/theme"
 )
 
 type Model struct {
-	appCtx *appctx.Context
-	result *stdtype.Result
+	appCtx        *appctx.Context
+	result        *stdtype.Result
+	style         theme.ColorStyle
+	width, height int
 }
 
 func NewMode(appCtx *appctx.Context) Model {
-	return Model{appCtx: appCtx}
+	return Model{appCtx: appCtx, style: appCtx.ColorStyle}
 }
 
-func (m Model) SetResult(result *stdtype.Result) Model {
+func (m *Model) SetResult(result *stdtype.Result) {
 	m.result = result
+}
 
-	return m
+func (m *Model) SetSize(width, height int) {
+	m.width = width
+	m.height = height
 }
 
 func (m Model) View() string {
-	theme := m.appCtx.Theme
-	width, height := m.appCtx.Dimension()
-
 	var b strings.Builder
 
 	if m.result.Invalid {
 		invalid := m.result.InvalidReason + " -- result not saved"
-		b.WriteString(theme.Incorrect.Render(invalid))
+		b.WriteString(m.style.Error.Render(invalid))
 		b.WriteString("\n\n")
 	}
 
 	b.WriteString(m.statsView())
 
 	return common.Layout{
-		Theme:  theme,
-		Header: theme.Title.Render("results"),
+		Style:  m.style,
+		Header: m.style.Primary.Bold(true).Render("results"),
 		Main:   b.String(),
-		Width:  width,
-		Height: height,
+		Width:  m.width,
+		Height: m.height,
 	}.View()
 }
 
 func (m Model) statsView() string {
-	theme := m.appCtx.Theme
 	result := m.result
 	stats := m.result.Stats
 
 	stat := func(label, value string) string {
 		return lipgloss.JoinVertical(lipgloss.Left,
-			theme.StatLabel.Render(label),
-			theme.Stat.Render(value),
+			m.style.Primary.Bold(true).Render(label),
+			m.style.Faint.Render(value),
 		)
 	}
 
-	gap := "   "
+	gap := strings.Repeat(" ", 3)
 
 	headline := lipgloss.JoinHorizontal(lipgloss.Top,
 		stat("wpm", fmt.Sprintf("%.0f", stats.WPM)), gap,

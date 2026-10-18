@@ -12,6 +12,7 @@ import (
 	"github.com/iamnotrodger/stdytype/ui/common"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
+	"github.com/iamnotrodger/stdytype/ui/theme"
 )
 
 type TickMsg time.Time
@@ -25,6 +26,7 @@ func Tick() tea.Cmd {
 type Model struct {
 	appCtx     *appctx.Context
 	wordSource stdtype.WordSource
+	settings   *stdtype.Settings
 
 	mode    stdtype.Mode
 	test    *stdtype.TypeTest
@@ -35,19 +37,25 @@ type Model struct {
 	afkSeconds int
 
 	caret cursor.Model
-	keys  *keys.KeyMap
 	fade  animation.Fade
+	style theme.ColorStyle
+
+	width, height int
 }
 
-func NewModel(appCtx *appctx.Context, wordSource stdtype.WordSource) Model {
+func NewModel(
+	appCtx *appctx.Context,
+	wordSource stdtype.WordSource,
+	settings *stdtype.Settings,
+) Model {
 	caret := cursor.New()
 	caret.Focus()
 
 	m := Model{
 		appCtx:     appCtx,
 		wordSource: wordSource,
+		settings:   settings,
 		caret:      caret,
-		keys:       keys.Keys,
 		fade:       animation.NewFade(),
 	}
 
@@ -75,22 +83,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	settings := m.appCtx.Settings
-	w, h := m.appCtx.Dimension()
-
 	elapsed := m.test.Elapsed().Seconds()
-	remaining := settings.Duration - int(elapsed)
+	remaining := m.settings.Duration - int(elapsed)
 
 	v := view{
-		theme:       m.appCtx.Theme,
+		style:       m.appCtx.ColorStyle,
 		mode:        m.test.Mode,
 		target:      m.test.Target,
 		typed:       m.test.Typed,
-		duration:    settings.Duration,
-		wordCount:   settings.WordCount,
-		visibleLine: settings.Lines,
+		duration:    m.settings.Duration,
+		wordCount:   m.settings.WordCount,
+		visibleLine: m.settings.Lines,
 		remaining:   remaining,
-		wrap:        wrapWidth(w),
+		wrap:        wrapWidth(m.width),
 		caretCell:   m.caretCell,
 		fade:        m.fade.Value,
 	}
@@ -104,34 +109,38 @@ func (m Model) View() string {
 	)
 
 	return common.Layout{
-		Theme:  m.appCtx.Theme,
+		Style:  m.appCtx.ColorStyle,
 		Header: v.modeBar(),
 		Main:   main,
-		Width:  w,
-		Height: h,
+		Width:  m.width,
+		Height: m.height,
 	}.View()
 }
 
-func (m Model) reset() Model {
-	settings := m.appCtx.Settings
-	mode := stdtype.ParseMode(settings.Mode)
+func (m *Model) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}
 
-	count := settings.WordCount
+func (m Model) reset() Model {
+	mode := stdtype.ParseMode(m.settings.Mode)
+
+	count := m.settings.WordCount
 	if mode == stdtype.TimeMode {
-		count = settings.Duration*3 + 30
+		count = m.settings.Duration*3 + 30
 	}
 
 	// TODO: log error
 	words, _ := m.wordSource.Generate(
 		count,
 		stdtype.GenerateOptions{
-			List:        settings.WordList,
-			Punctuation: settings.Punctuation,
-			Numbers:     settings.Numbers,
+			List:        m.settings.WordList,
+			Punctuation: m.settings.Punctuation,
+			Numbers:     m.settings.Numbers,
 		},
 	)
 
-	m.mode = stdtype.ParseMode(settings.Mode)
+	m.mode = stdtype.ParseMode(m.settings.Mode)
 	m.test = stdtype.NewTypeTest(words, m.mode)
 	m.samples = stdtype.Samples{}
 	m.prevStats = stdtype.Stats{}
@@ -161,7 +170,6 @@ func (m Model) onTick() (Model, tea.Cmd) {
 		return m, Tick()
 	}
 
-	settings := m.appCtx.Settings
 	stats := stdtype.ComputeStats(m.test)
 
 	rawDelta := max(0, stats.TypedChars-m.prevStats.TypedChars)
@@ -183,7 +191,7 @@ func (m Model) onTick() (Model, tea.Cmd) {
 	m.prevStats = stats
 
 	if m.mode == stdtype.TimeMode {
-		duration := time.Duration(settings.Duration) * time.Second
+		duration := time.Duration(m.settings.Duration) * time.Second
 		if m.test.Elapsed() >= duration {
 			return m.onFinish(), Tick()
 		}
@@ -205,9 +213,9 @@ func (m Model) caretCell(ch string) string {
 
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch {
-	case key.Matches(msg, m.keys.DeleteWord):
+	case key.Matches(msg, keys.Keys.DeleteWord):
 		m.test.DeleteWord()
-	case key.Matches(msg, m.keys.Backspace):
+	case key.Matches(msg, keys.Keys.Backspace):
 		m.test.Backspace()
 	case msg.Text != "":
 		for _, r := range msg.Text {
@@ -225,16 +233,14 @@ func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) onFinish() Model {
-	settings := m.appCtx.Settings
-
 	m.test.Finish()
 	stats := stdtype.ComputeStats(m.test)
 	consistency := stdtype.Consistency(m.samples.Raw)
 
-	mode := stdtype.ParseMode(settings.Mode)
-	amount := settings.Duration
+	mode := stdtype.ParseMode(m.settings.Mode)
+	amount := m.settings.Duration
 	if mode == stdtype.WordsMode {
-		amount = settings.WordCount
+		amount = m.settings.WordCount
 	}
 
 	result := &stdtype.Result{

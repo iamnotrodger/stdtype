@@ -9,11 +9,11 @@ import (
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
 	"github.com/iamnotrodger/stdytype/ui/common"
-	"github.com/iamnotrodger/stdytype/ui/themes"
+	"github.com/iamnotrodger/stdytype/ui/theme"
 )
 
 type view struct {
-	theme themes.Theme
+	style theme.ColorStyle
 	mode  stdtype.Mode
 
 	target []rune
@@ -62,10 +62,10 @@ func (v view) render() string {
 func (v view) modeBar() string {
 	opt := func(label string, on bool) string {
 		if on {
-			return v.theme.Accent.Render(label)
+			return v.style.Primary.Bold(true).Render(label)
 		}
 
-		return v.theme.Dim.Render(label)
+		return v.style.Faint.Render(label)
 	}
 
 	isTimeMode := v.mode == stdtype.TimeMode
@@ -85,7 +85,7 @@ func (v view) modeBar() string {
 		labels = append(labels, opt(label, on))
 	}
 
-	sep := v.theme.Dim.Render(" | ")
+	sep := v.style.Faint.Render(" | ")
 
 	return modes + sep + strings.Join(labels, " ")
 }
@@ -121,18 +121,18 @@ func (v view) character(index int) string {
 	}
 
 	if index > v.caret() {
-		return v.theme.Pending.Render(string(target))
+		return v.style.Faint.Render(string(target))
 	}
 
 	if v.typed[index] == target {
-		return v.theme.Correct.Render(string(target))
+		return v.style.Success.Render(string(target))
 	}
 
 	if target == ' ' {
 		target = '_'
 	}
 
-	return v.theme.Incorrect.Render(string(target))
+	return v.style.Error.Underline(true).Render(string(target))
 }
 
 func (v view) caret() int {
