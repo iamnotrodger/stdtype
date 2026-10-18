@@ -6,11 +6,11 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
 	"github.com/iamnotrodger/stdytype/ui/keys"
-	"github.com/iamnotrodger/stdytype/ui/themes"
+	"github.com/iamnotrodger/stdytype/ui/theme"
 )
 
 type Layout struct {
-	Theme  themes.Theme
+	Style  theme.ColorStyle
 	Header string
 	Main   string
 	Footer string
@@ -36,7 +36,7 @@ func (l Layout) View() string {
 
 func (l Layout) GetFooter() string {
 	if l.Footer == "" {
-		return l.Theme.Dim.Render(DefaultFooter())
+		return l.Style.Faint.Render(DefaultFooter())
 	}
 
 	return l.Footer
@@ -52,7 +52,7 @@ func DefaultFooter() string {
 			"",
 		},
 		{
-			keys.Keys.Menu,
+			keys.Keys.CommandPalette,
 			"󰍜",
 		},
 		{
