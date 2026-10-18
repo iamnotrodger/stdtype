@@ -3,19 +3,29 @@ package keys
 import "charm.land/bubbles/v2/key"
 
 type KeyMap struct {
-	Restart    key.Binding
-	Menu       key.Binding
-	Backspace  key.Binding
-	DeleteWord key.Binding
-	Quit       key.Binding
+	Up             key.Binding
+	Down           key.Binding
+	Restart        key.Binding
+	CommandPalette key.Binding
+	Backspace      key.Binding
+	DeleteWord     key.Binding
+	Quit           key.Binding
 }
 
 var Keys = &KeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "move down"),
+	),
 	Restart: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "restart"),
 	),
-	Menu: key.NewBinding(
+	CommandPalette: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "menu"),
 	),
