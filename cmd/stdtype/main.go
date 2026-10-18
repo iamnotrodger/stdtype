@@ -76,8 +76,12 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "settingsRepo.GetSettings")
 			}
 
-			model := ui.NewModel(wordSource, statsRepo, settings)
-			program := tea.NewProgram(model, tea.WithContext(cmd.Context()))
+			program := tea.NewProgram(
+				ui.NewModel(wordSource, statsRepo, settings),
+				tea.WithContext(cmd.Context()),
+				tea.WithoutSignalHandler(),
+			)
+
 			if _, err := program.Run(); err != nil {
 				return errors.Wrap(err, "program.Run")
 			}
