@@ -25,6 +25,7 @@ linters:
     - mnd
     - paralleltest
     - protogetter
+    - recvcheck
     - revive
     - tagliatelle
     - testpackage
