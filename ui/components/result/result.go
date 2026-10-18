@@ -8,18 +8,17 @@ import (
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/common"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
-	"github.com/iamnotrodger/stdytype/ui/theme"
 )
 
 type Model struct {
-	appCtx        *appctx.Context
-	result        *stdtype.Result
-	style         theme.ColorStyle
+	appCtx *appctx.Context
+	result *stdtype.Result
+
 	width, height int
 }
 
 func NewMode(appCtx *appctx.Context) Model {
-	return Model{appCtx: appCtx, style: appCtx.ColorStyle}
+	return Model{appCtx: appCtx}
 }
 
 func (m *Model) SetResult(result *stdtype.Result) {
@@ -34,17 +33,19 @@ func (m *Model) SetSize(width, height int) {
 func (m Model) View() string {
 	var b strings.Builder
 
+	style := m.appCtx.ColorStyle
+
 	if m.result.Invalid {
 		invalid := m.result.InvalidReason + " -- result not saved"
-		b.WriteString(m.style.Error.Render(invalid))
+		b.WriteString(style.Error.Render(invalid))
 		b.WriteString("\n\n")
 	}
 
 	b.WriteString(m.statsView())
 
 	return common.Layout{
-		Style:  m.style,
-		Header: m.style.Primary.Bold(true).Render("results"),
+		Style:  style,
+		Header: style.Primary.Bold(true).Render("results"),
 		Main:   b.String(),
 		Width:  m.width,
 		Height: m.height,
@@ -54,11 +55,12 @@ func (m Model) View() string {
 func (m Model) statsView() string {
 	result := m.result
 	stats := m.result.Stats
+	style := m.appCtx.ColorStyle
 
 	stat := func(label, value string) string {
 		return lipgloss.JoinVertical(lipgloss.Left,
-			m.style.Primary.Bold(true).Render(label),
-			m.style.Faint.Render(value),
+			style.Primary.Bold(true).Render(label),
+			style.Faint.Render(value),
 		)
 	}
 

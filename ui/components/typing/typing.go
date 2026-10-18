@@ -12,7 +12,6 @@ import (
 	"github.com/iamnotrodger/stdytype/ui/common"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
-	"github.com/iamnotrodger/stdytype/ui/theme"
 )
 
 type TickMsg time.Time
@@ -38,7 +37,6 @@ type Model struct {
 
 	caret cursor.Model
 	fade  animation.Fade
-	style theme.ColorStyle
 
 	width, height int
 }
