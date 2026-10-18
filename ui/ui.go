@@ -54,9 +54,7 @@ func NewModel(
 		screen:     screenTyping,
 		typing:     typing.NewModel(appCtx, wordSource, &settings),
 		result:     result.NewMode(appCtx),
-		palette: commandpalette.NewModel(commandpalette.Config{
-			Commands: Commands,
-		}),
+		palette:    commandpalette.NewModel(*appCtx, BuildCommands(*theme.Default)),
 	}
 }
 
@@ -72,6 +70,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTyping(msg)
 	case animation.Msg:
 		return m.updateTyping(msg)
+	case commandpalette.CommandMsg:
+		return m.onCommand(msg)
+	case restartMsg:
+		return m.onRestart()
+	case navMsg:
+		return m.onNav(msg)
 
 	case tea.KeyPressMsg:
 		switch {
@@ -107,12 +111,12 @@ func (m Model) View() tea.View {
 
 	if m.paletteOpen {
 		palette := m.palette.View()
-		paletteWidth, paletteHeight := lipgloss.Size(palette)
+		paletteWidth, _ := lipgloss.Size(palette)
 
 		layers = append(layers,
 			lipgloss.NewLayer(palette).
 				X((m.width-paletteWidth)/2).
-				Y((m.height-paletteHeight)/4).
+				Y(m.height/4).
 				Z(1),
 		)
 	}
@@ -196,4 +200,16 @@ func (m Model) onPalette() (tea.Model, tea.Cmd) {
 	m.palette.Reset()
 
 	return m, m.palette.Focus()
+}
+
+func (m Model) onCommand(msg commandpalette.CommandMsg) (tea.Model, tea.Cmd) {
+	m.paletteOpen = false
+
+	return m, msg.Command.Run
+}
+
+func (m Model) onNav(msg navMsg) (tea.Model, tea.Cmd) {
+	m.screen = msg.screen
+
+	return m, nil
 }

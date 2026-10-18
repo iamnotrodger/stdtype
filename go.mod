@@ -3,11 +3,13 @@ module github.com/iamnotrodger/stdytype
 go 1.27.1
 
 require (
+	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.1.0
-	github.com/charmbracelet/bubbles v1.0.0
+	charm.land/lipgloss/v2 v2.0.5
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/jonboulle/clockwork v0.5.0
 	github.com/pkg/errors v0.9.1
+	github.com/sahilm/fuzzy v0.1.3
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -15,8 +17,7 @@ require (
 )
 
 require (
-	charm.land/bubbles/v2 v2.2.1 // indirect
-	charm.land/lipgloss/v2 v2.0.5 // indirect
+	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20261008173134-6b8d4baf91b4 // indirect
 	github.com/charmbracelet/x/ansi v0.11.9 // indirect
