@@ -153,7 +153,14 @@ func (m Model) updateTyping(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.typing, cmd = m.typing.Update(msg)
 
 	if m.typing.Completed() {
-		return m.onComplete()
+		result := m.typing.Result()
+
+		err := m.statsRepo.CreateResult(result)
+		if err != nil {
+			tea.Printf("error %s", err.Error())
+		}
+
+		return m.onResult(result)
 	}
 
 	return m, cmd
@@ -183,17 +190,6 @@ func (m Model) onResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.stats.SetSize(w, h)
 
 	return m, nil
-}
-
-func (m Model) onComplete() (tea.Model, tea.Cmd) {
-	result := m.typing.Result()
-
-	err := m.statsRepo.CreateResult(result) // nolint:errcheck,gosec
-	if err != nil {
-		tea.Printf("error %s", err.Error())
-	}
-
-	return m.onResult(result)
 }
 
 func (m Model) onResult(result *stdtype.Result) (tea.Model, tea.Cmd) {
@@ -238,9 +234,7 @@ func (m Model) onNavigate(msg navMsg) (tea.Model, tea.Cmd) {
 	if msg.screen == screenStats {
 		results, err := m.statsRepo.ListResults()
 		if err != nil {
-			tea.Printf("error %s", err.Error())
-
-			return m, nil
+			return m, tea.Printf("error %s", err.Error())
 		}
 
 		m.stats.SetResults(results)
