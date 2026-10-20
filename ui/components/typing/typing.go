@@ -47,6 +47,8 @@ func NewModel(
 	settings *stdtype.Settings,
 ) Model {
 	caret := cursor.New()
+	caret.Style = lipgloss.NewStyle().Reverse(true)
+	caret.TextStyle = appCtx.ColorStyle.Faint
 	caret.Focus()
 
 	m := Model{
@@ -61,7 +63,7 @@ func NewModel(
 }
 
 func (t Model) Init() tea.Cmd {
-	return tea.Batch(Tick(), t.caret.Blink())
+	return tea.Batch(Tick(), cursor.Blink)
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -199,14 +201,13 @@ func (m Model) onTick() (Model, tea.Cmd) {
 }
 
 func (m Model) caretCell(ch string) string {
-	c := m.caret
-	c.SetChar(ch)
+	m.caret.SetChar(ch)
 
 	if m.test.Started() {
-		c.IsBlinked = false
+		m.caret.IsBlinked = false
 	}
 
-	return c.View()
+	return m.caret.View()
 }
 
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {

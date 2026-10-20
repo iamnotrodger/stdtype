@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"charm.land/bubbles/v2/cursor"
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -63,7 +64,7 @@ func NewModel(
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.typing.Init())
+	return m.typing.Init()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -71,6 +72,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		return m.onResize(msg)
 	case typing.TickMsg:
+		return m.updateTyping(msg)
+	case cursor.BlinkMsg:
 		return m.updateTyping(msg)
 	case animation.Msg:
 		return m.updateTyping(msg)
