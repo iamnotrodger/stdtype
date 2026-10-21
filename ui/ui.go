@@ -64,7 +64,9 @@ func NewModel(
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.typing.Init()
+	return tea.Batch(
+		m.typing.Init(),
+	)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -109,6 +111,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case screenResult:
 			return m, nil
 		}
+	}
+
+	if m.screen == screenTyping {
+		return m.updateTyping(msg)
 	}
 
 	return m, nil

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"charm.land/bubbles/v2/cursor"
 	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
@@ -13,8 +14,9 @@ import (
 )
 
 type view struct {
-	style theme.ColorStyle
-	mode  stdtype.Mode
+	style  theme.ColorStyle
+	mode   stdtype.Mode
+	cursor cursor.Model
 
 	target []rune
 	typed  []rune
@@ -24,8 +26,6 @@ type view struct {
 	visibleLine int
 	wrap        int
 	remaining   int
-
-	caretCell func(ch string) string
 
 	fade float64
 }
@@ -107,7 +107,8 @@ func (v view) line(s lineSpan) string {
 	}
 
 	if v.caret() == s.end {
-		b.WriteString(v.caretCell(" "))
+		v.cursor.SetChar(" ")
+		b.WriteString(v.cursor.View())
 	}
 
 	return b.String()
@@ -117,7 +118,9 @@ func (v view) character(index int) string {
 	target := v.target[index]
 
 	if index == v.caret() {
-		return v.caretCell(string(target))
+		v.cursor.SetChar(string(target))
+
+		return v.cursor.View()
 	}
 
 	if index > v.caret() {

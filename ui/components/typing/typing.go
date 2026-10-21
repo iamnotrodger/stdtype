@@ -35,8 +35,8 @@ type Model struct {
 	prevStats  stdtype.Stats
 	afkSeconds int
 
-	caret cursor.Model
-	fade  animation.Fade
+	cursor cursor.Model
+	fade   animation.Fade
 
 	width, height int
 }
@@ -46,23 +46,23 @@ func NewModel(
 	wordSource stdtype.WordSource,
 	settings *stdtype.Settings,
 ) Model {
-	caret := cursor.New()
-	caret.Style = lipgloss.NewStyle().Reverse(true)
-	caret.TextStyle = appCtx.ColorStyle.Faint
-	caret.Focus()
+	c := cursor.New()
+	c.Style = lipgloss.NewStyle().Reverse(true)
+	c.TextStyle = appCtx.ColorStyle.Faint
+	c.Focus()
 
 	m := Model{
 		appCtx:     appCtx,
 		wordSource: wordSource,
 		settings:   settings,
-		caret:      caret,
+		cursor:     c,
 		fade:       animation.NewFade(),
 	}
 
 	return m.reset()
 }
 
-func (t Model) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return tea.Batch(Tick(), cursor.Blink)
 }
 
@@ -77,7 +77,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	m.caret, cmd = m.caret.Update(msg)
+	m.cursor, cmd = m.cursor.Update(msg)
 
 	return m, cmd
 }
@@ -88,6 +88,7 @@ func (m Model) View() string {
 
 	v := view{
 		style:       m.appCtx.ColorStyle,
+		cursor:      m.cursor,
 		mode:        m.test.Mode,
 		target:      m.test.Target,
 		typed:       m.test.Typed,
@@ -96,7 +97,6 @@ func (m Model) View() string {
 		visibleLine: m.settings.Lines,
 		remaining:   remaining,
 		wrap:        wrapWidth(m.width),
-		caretCell:   m.caretCell,
 		fade:        m.fade.Value,
 	}
 
@@ -154,7 +154,11 @@ func (m Model) Restart() (Model, tea.Cmd) {
 	m = m.reset()
 	m.fade.Start()
 
-	return m, animation.Tick()
+	return m, tea.Batch(
+		Tick(),
+		animation.Tick(),
+		m.cursor.SetMode(cursor.CursorBlink),
+	)
 }
 
 func (m Model) Completed() bool {
@@ -200,16 +204,6 @@ func (m Model) onTick() (Model, tea.Cmd) {
 	return m, Tick()
 }
 
-func (m Model) caretCell(ch string) string {
-	m.caret.SetChar(ch)
-
-	if m.test.Started() {
-		m.caret.IsBlinked = false
-	}
-
-	return m.caret.View()
-}
-
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Keys.DeleteWord):
@@ -222,6 +216,10 @@ func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		}
 	default:
 		return m, nil
+	}
+
+	if m.test.Started() {
+		m.cursor.SetMode(cursor.CursorStatic)
 	}
 
 	if m.test.Completed() {
