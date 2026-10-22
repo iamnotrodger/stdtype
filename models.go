@@ -10,6 +10,15 @@ const (
 	InvalidMode
 )
 
+type SettingField string
+
+const (
+	SettingMode      SettingField = "MODE"
+	SettingDuration  SettingField = "DURATION"
+	SettingWordCount SettingField = "WORDS"
+	SettingList      SettingField = "LIST"
+)
+
 func (m Mode) String() string {
 	if m == WordsMode {
 		return "words"

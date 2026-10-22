@@ -30,6 +30,8 @@ type Model struct {
 	wordSource stdtype.WordSource
 	statsRepo  stdtype.StatsRepo
 
+	settings *stdtype.Settings
+
 	typing  typing.Model
 	result  result.Model
 	stats   stats.Model
@@ -55,11 +57,12 @@ func NewModel(
 		appCtx:     appCtx,
 		wordSource: wordSource,
 		statsRepo:  statsRepo,
+		settings:   &settings,
 		screen:     screenTyping,
 		typing:     typing.NewModel(appCtx, wordSource, &settings),
 		result:     result.NewMode(appCtx),
 		stats:      stats.NewModel(appCtx),
-		palette:    commandpalette.NewModel(*appCtx, BuildCommands(*theme.Default)),
+		palette:    commandpalette.NewModel(*appCtx, BuildCommands(*theme.Default, wordSource.Lists())),
 	}
 }
 
@@ -87,6 +90,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.onRestart()
 	case navMsg:
 		return m.onNavigate(msg)
+	case settingsMsg:
+		return m.onSettings(msg)
 
 	case tea.KeyPressMsg:
 		switch {
@@ -218,6 +223,39 @@ func (m Model) onRestart() (tea.Model, tea.Cmd) {
 	m.paletteOpen = false
 
 	return m, cmd
+}
+
+func (m Model) onSettings(msg settingsMsg) (tea.Model, tea.Cmd) {
+	switch msg.field {
+	case stdtype.SettingMode:
+		value, ok := msg.value.(string)
+		if !ok {
+			return m, nil
+		}
+		m.settings.Mode = value
+	case stdtype.SettingList:
+		value, ok := msg.value.(string)
+		if !ok {
+			return m, nil
+		}
+		m.settings.WordList = value
+	case stdtype.SettingDuration:
+		value, ok := msg.value.(int)
+		if !ok {
+			return m, nil
+		}
+		m.settings.Mode = stdtype.TimeMode.String()
+		m.settings.Duration = value
+	case stdtype.SettingWordCount:
+		value, ok := msg.value.(int)
+		if !ok {
+			return m, nil
+		}
+		m.settings.Mode = stdtype.WordsMode.String()
+		m.settings.WordCount = value
+	}
+
+	return m.onRestart()
 }
 
 func (m Model) onPalette() (tea.Model, tea.Cmd) {

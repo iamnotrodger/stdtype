@@ -75,7 +75,7 @@ func (v view) modeBar() string {
 	options := common.WordOptions
 	if isTimeMode {
 		selected = v.duration
-		options = common.TimeOptions
+		options = common.DurationOptions
 	}
 
 	labels := make([]string, 0, len(options))

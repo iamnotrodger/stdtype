@@ -18,7 +18,7 @@ type Command struct {
 	// Keywords are additional searchable terms that are not displayed.
 	Keywords    []string
 	Run         tea.Cmd
-	SubCommands []Command
+	Subcommands []Command
 }
 
 type CommandMsg struct {
@@ -30,6 +30,7 @@ type Model struct {
 	commands []Command
 	filtered []Command
 	cursor   int
+	index    int
 	input    textinput.Model
 
 	style      theme.ColorStyle
@@ -51,6 +52,7 @@ func NewModel(appCtx appctx.Context, commands []Command, opts ...Option) Model {
 		appCtx:     appCtx,
 		commands:   commands,
 		filtered:   commands,
+		index:      -1,
 		style:      appCtx.ColorStyle,
 		maxResults: options.maxResults,
 		maxWidth:   options.maxWidth,
@@ -64,6 +66,7 @@ func (m *Model) Focus() tea.Cmd {
 
 func (m *Model) Reset() {
 	m.input.Reset()
+	m.index = -1
 	m.filtered = m.commands
 	m.cursor = 0
 }
@@ -103,6 +106,15 @@ func (m Model) Update(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 		action := m.filtered[m.cursor]
 
+		if len(action.Subcommands) > 0 {
+			m.filtered = action.Subcommands
+			m.index = m.cursor
+			m.cursor = 0
+			m.input.Reset()
+
+			return m, nil
+		}
+
 		return m, func() tea.Msg {
 			return CommandMsg{Command: action}
 		}
@@ -122,7 +134,7 @@ func (m Model) Update(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	width := max(min(m.maxWidth, m.width), 20)
-	innerW := width - 6
+	innerWidth := width - 6
 
 	colorStyle := m.appCtx.ColorStyle
 	theme := m.appCtx.Theme
@@ -132,7 +144,7 @@ func (m Model) View() string {
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
 
-	divider := colorStyle.Faint.Render(strings.Repeat("─", innerW))
+	divider := colorStyle.Faint.Render(strings.Repeat("─", innerWidth))
 	b.WriteString(divider)
 	b.WriteString("\n")
 
@@ -151,7 +163,7 @@ func (m Model) View() string {
 				prefix = "▶ "
 			}
 
-			label := truncate(command.Label, innerW-len(prefix))
+			label := truncate(command.Label, innerWidth-len(prefix))
 			b.WriteString(colorStyle.Primary.Render(prefix + label))
 
 			if i < len(results)-1 {
@@ -181,14 +193,19 @@ func (m Model) Results() []Command {
 }
 
 func (m *Model) applyFilter(query string) {
+	commands := m.commands
+	if m.index >= 0 {
+		commands = m.commands[m.index].Subcommands
+	}
+
 	if strings.TrimSpace(query) == "" {
-		m.filtered = m.commands
+		m.filtered = commands
 
 		return
 	}
 
-	sources := make([]string, len(m.commands))
-	for i, a := range m.commands {
+	sources := make([]string, len(commands))
+	for i, a := range commands {
 		sources[i] = a.Label
 		if len(a.Keywords) > 0 {
 			sources[i] += " " + strings.Join(a.Keywords, " ")
@@ -198,7 +215,7 @@ func (m *Model) applyFilter(query string) {
 	matches := fuzzy.Find(query, sources)
 	m.filtered = make([]Command, len(matches))
 	for i, match := range matches {
-		m.filtered[i] = m.commands[match.Index]
+		m.filtered[i] = commands[match.Index]
 	}
 }
 
