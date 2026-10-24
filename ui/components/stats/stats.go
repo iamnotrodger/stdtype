@@ -2,10 +2,13 @@ package stats
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/common"
 	appctx "github.com/iamnotrodger/stdytype/ui/context"
@@ -21,6 +24,7 @@ type Model struct {
 	appCtx  *appctx.Context
 	table   table.Model
 	results []*stdtype.Result
+	summary summary
 
 	width, height int
 }
@@ -70,6 +74,7 @@ func (m *Model) SetSize(width, height int) {
 
 func (m *Model) SetResults(results []*stdtype.Result) {
 	m.results = results
+	m.summary = summarize(results)
 
 	rows := make([]table.Row, 0, len(results))
 
@@ -105,13 +110,44 @@ func (m Model) Update(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	// TODO: add average type shiiiii.
+	main := lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.summaryView(),
+		"\n\n",
+		m.table.View(),
+	)
 
 	return common.Layout{
 		Style:  m.appCtx.ColorStyle,
 		Header: "stats",
-		Main:   m.table.View(),
+		Main:   main,
 		Width:  m.width,
 		Height: m.height,
 	}.View()
+}
+
+func (m Model) summaryView() string {
+	style := m.appCtx.ColorStyle
+	sum := m.summary
+
+	stat := func(label, value string) string {
+		return lipgloss.JoinVertical(lipgloss.Left,
+			style.Success.Render(label),
+			style.Primary.Bold(true).Render(value),
+		)
+	}
+
+	gap := strings.Repeat(" ", 3)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		stat("completed", fmt.Sprintf("%d", sum.tests)), gap,
+		stat("time typing", clock(sum.timeTyping)), gap,
+		stat("best wpm", fmt.Sprintf("%.0f", sum.bestWPM)), gap,
+		stat("avg wpm", fmt.Sprintf("%.0f", sum.avgWPM)),
+	)
+}
+
+func clock(d time.Duration) string {
+	secs := int(d.Round(time.Second).Seconds())
+	return fmt.Sprintf("%02d:%02d:%02d", secs/3600, secs/60%60, secs%60)
 }
