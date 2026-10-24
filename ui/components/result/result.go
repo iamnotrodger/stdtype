@@ -41,6 +41,21 @@ func (m Model) View() string {
 		b.WriteString("\n\n")
 	}
 
+	graph := graphModel{
+		samples: m.result.Samples,
+		start:    m.result.Timestamp,
+
+		style: GraphStyle{
+			wpm: style.Success,
+			raw: style.Faint,
+			err: style.Error,
+		},
+
+		width: min(72, max(m.width-8, 20)),
+	}
+
+	b.WriteString(graph.View())
+	b.WriteString("\n\n")
 	b.WriteString(m.statsView())
 
 	return common.Layout{
