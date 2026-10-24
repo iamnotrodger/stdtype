@@ -82,7 +82,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTyping(msg)
 	case animation.Msg:
 		return m.updateTyping(msg)
-	case stats.ResultMsg:
+	case typing.FinishedMsg:
+		return m.onComplete(msg.Result)
+	case stats.SelectedMsg:
 		return m.onResult(msg.Result)
 	case commandpalette.CommandMsg:
 		return m.onCommand(msg)
@@ -163,19 +165,7 @@ func (m Model) viewScreen(s screen) string {
 
 func (m Model) updateTyping(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-
 	m.typing, cmd = m.typing.Update(msg)
-
-	if m.typing.Completed() {
-		result := m.typing.Result()
-
-		err := m.statsRepo.CreateResult(result)
-		if err != nil {
-			tea.Printf("error %s", err.Error())
-		}
-
-		return m.onResult(result)
-	}
 
 	return m, cmd
 }
@@ -204,6 +194,15 @@ func (m Model) onResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.stats.SetSize(w, h)
 
 	return m, nil
+}
+
+func (m Model) onComplete(result *stdtype.Result) (tea.Model, tea.Cmd) {
+	err := m.statsRepo.CreateResult(result)
+	if err != nil {
+		tea.Printf("error %s", err.Error())
+	}
+
+	return m.onResult(result)
 }
 
 func (m Model) onResult(result *stdtype.Result) (tea.Model, tea.Cmd) {

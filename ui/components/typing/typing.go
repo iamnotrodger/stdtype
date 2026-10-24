@@ -19,6 +19,10 @@ type TickMsg struct {
 	Time time.Time
 }
 
+type FinishedMsg struct {
+	Result *stdtype.Result
+}
+
 func tick(id int) tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return TickMsg{ID: id, Time: t}
@@ -32,7 +36,6 @@ type Model struct {
 
 	mode    stdtype.Mode
 	test    *stdtype.TypeTest
-	result  *stdtype.Result
 	samples stdtype.Samples
 
 	prevStats  stdtype.Stats
@@ -148,7 +151,6 @@ func (m Model) reset() Model {
 	m.test = stdtype.NewTypeTest(words, m.mode)
 	m.samples = stdtype.Samples{}
 	m.prevStats = stdtype.Stats{}
-	m.result = nil
 	m.afkSeconds = 0
 	m.tickID++
 
@@ -164,14 +166,6 @@ func (m Model) Restart() (Model, tea.Cmd) {
 		animation.Tick(),
 		m.cursor.SetMode(cursor.CursorBlink),
 	)
-}
-
-func (m Model) Completed() bool {
-	return m.test.Completed()
-}
-
-func (m Model) Result() *stdtype.Result {
-	return m.result
 }
 
 func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
@@ -206,7 +200,7 @@ func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
 	if m.mode == stdtype.TimeMode {
 		duration := time.Duration(m.settings.Duration) * time.Second
 		if m.test.Elapsed() >= duration {
-			return m.onFinish(), tick(m.tickID)
+			return m.onFinish()
 		}
 	}
 
@@ -214,6 +208,10 @@ func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	if m.test.Finished() {
+		return m, nil
+	}
+
 	switch {
 	case key.Matches(msg, keys.Keys.DeleteWord):
 		m.test.DeleteWord()
@@ -232,13 +230,13 @@ func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	}
 
 	if m.test.Completed() {
-		return m.onFinish(), nil
+		return m.onFinish()
 	}
 
 	return m, nil
 }
 
-func (m Model) onFinish() Model {
+func (m Model) onFinish() (Model, tea.Cmd) {
 	m.test.Finish()
 	stats := stdtype.ComputeStats(m.test)
 	consistency := stdtype.Consistency(m.samples.Raw)
@@ -264,9 +262,9 @@ func (m Model) onFinish() Model {
 		result.InvalidReason = "afk detected"
 	}
 
-	m.result = result
-
-	return m
+	return m, func() tea.Msg {
+		return FinishedMsg{Result: result}
+	}
 }
 
 func (m Model) onAnimate() (Model, tea.Cmd) {

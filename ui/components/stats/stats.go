@@ -13,7 +13,7 @@ import (
 )
 
 // TODO: send msg on select.
-type ResultMsg struct {
+type SelectedMsg struct {
 	Result *stdtype.Result
 }
 
@@ -95,7 +95,7 @@ func (m Model) Update(msg tea.KeyMsg) (Model, tea.Cmd) {
 		result := m.results[m.table.Cursor()]
 
 		return m, func() tea.Msg {
-			return ResultMsg{result}
+			return SelectedMsg{result}
 		}
 	}
 
