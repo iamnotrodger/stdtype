@@ -14,11 +14,14 @@ import (
 	"github.com/iamnotrodger/stdytype/ui/keys"
 )
 
-type TickMsg time.Time
+type TickMsg struct {
+	ID   int
+	Time time.Time
+}
 
-func Tick() tea.Cmd {
+func tick(id int) tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
-		return TickMsg(t)
+		return TickMsg{ID: id, Time: t}
 	})
 }
 
@@ -34,6 +37,7 @@ type Model struct {
 
 	prevStats  stdtype.Stats
 	afkSeconds int
+	tickID     int
 
 	cursor cursor.Model
 	fade   animation.Fade
@@ -63,13 +67,13 @@ func NewModel(
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(Tick(), cursor.Blink)
+	return tea.Batch(tick(m.tickID), cursor.Blink)
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TickMsg:
-		return m.onTick()
+		return m.onTick(msg)
 	case animation.Msg:
 		return m.onAnimate()
 	case tea.KeyPressMsg:
@@ -146,6 +150,7 @@ func (m Model) reset() Model {
 	m.prevStats = stdtype.Stats{}
 	m.result = nil
 	m.afkSeconds = 0
+	m.tickID++
 
 	return m
 }
@@ -155,7 +160,7 @@ func (m Model) Restart() (Model, tea.Cmd) {
 	m.fade.Start()
 
 	return m, tea.Batch(
-		Tick(),
+		tick(m.tickID),
 		animation.Tick(),
 		m.cursor.SetMode(cursor.CursorBlink),
 	)
@@ -169,9 +174,13 @@ func (m Model) Result() *stdtype.Result {
 	return m.result
 }
 
-func (m Model) onTick() (Model, tea.Cmd) {
+func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
+	if msg.ID != m.tickID || m.test.Completed() {
+		return m, nil
+	}
+
 	if !m.test.Started() {
-		return m, Tick()
+		return m, tick(m.tickID)
 	}
 
 	stats := stdtype.ComputeStats(m.test)
@@ -180,7 +189,7 @@ func (m Model) onTick() (Model, tea.Cmd) {
 	netDelta := max(0, stats.CorrectChars-m.prevStats.CorrectChars)
 
 	errKeys := stats.Keystrokes - stats.CorrectKeystrokes
-	prevErrKeys := m.prevStats.Keystrokes - m.prevStats.CorrectChars
+	prevErrKeys := m.prevStats.Keystrokes - m.prevStats.CorrectKeystrokes
 	errDelta := max(0, errKeys-prevErrKeys)
 
 	// Per-second WPM samples (chars/5 per 1/60 min).
@@ -197,11 +206,11 @@ func (m Model) onTick() (Model, tea.Cmd) {
 	if m.mode == stdtype.TimeMode {
 		duration := time.Duration(m.settings.Duration) * time.Second
 		if m.test.Elapsed() >= duration {
-			return m.onFinish(), Tick()
+			return m.onFinish(), tick(m.tickID)
 		}
 	}
 
-	return m, Tick()
+	return m, tick(m.tickID)
 }
 
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
