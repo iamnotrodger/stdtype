@@ -64,6 +64,10 @@ func (t *TypeTest) Started() bool {
 	return t.started
 }
 
+func (t *TypeTest) Finished() bool {
+	return t.finished
+}
+
 func (t *TypeTest) Completed() bool {
 	switch t.Mode {
 	case WordsMode:
