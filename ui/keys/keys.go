@@ -5,7 +5,6 @@ import "charm.land/bubbles/v2/key"
 type KeyMap struct {
 	Up             key.Binding
 	Down           key.Binding
-	Enter          key.Binding
 	Restart        key.Binding
 	CommandPalette key.Binding
 	Quit           key.Binding
@@ -19,10 +18,6 @@ var Keys = &KeyMap{
 	Down: key.NewBinding(
 		key.WithKeys("down", "j"),
 		key.WithHelp("↓/j", "move down"),
-	),
-	Enter: key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "enter"),
 	),
 	Restart: key.NewBinding(
 		key.WithKeys("tab"),

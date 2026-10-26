@@ -12,17 +12,52 @@ import (
 	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/common"
-	appctx "github.com/iamnotrodger/stdytype/ui/context"
-	"github.com/iamnotrodger/stdytype/ui/keys"
 )
 
-// TODO: send msg on select.
-type SelectedMsg struct {
+// ResultMsg is sent when a result is selected.
+type ResultMsg struct {
 	Result *stdtype.Result
 }
 
+type KeyMap struct {
+	Select key.Binding
+}
+
+func DefaultKeyMap() KeyMap {
+	return KeyMap{
+		Select: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "view result"),
+		),
+	}
+}
+
+type Styles struct {
+	Title  lipgloss.Style
+	Label  lipgloss.Style
+	Value  lipgloss.Style
+	Footer lipgloss.Style
+	Table  table.Styles
+}
+
+func DefaultStyles() Styles {
+	t := table.DefaultStyles()
+	t.Header = t.Header.MarginBottom(1).Bold(true)
+	t.Selected = t.Selected.Background(lipgloss.Blue)
+
+	return Styles{
+		Title:  lipgloss.NewStyle(),
+		Label:  lipgloss.NewStyle().Foreground(lipgloss.Green),
+		Value:  lipgloss.NewStyle().Bold(true),
+		Footer: lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		Table:  t,
+	}
+}
+
 type Model struct {
-	appCtx  *appctx.Context
+	KeyMap KeyMap
+
+	styles  Styles
 	table   table.Model
 	results []*stdtype.Result
 	summary summary
@@ -30,7 +65,7 @@ type Model struct {
 	width, height int
 }
 
-func NewModel(appCtx *appctx.Context) Model {
+func NewModel() Model {
 	columns := []table.Column{
 		{Title: "wpm", Width: 5},
 		{Title: "raw", Width: 5},
@@ -45,8 +80,6 @@ func NewModel(appCtx *appctx.Context) Model {
 		tableWidth += c.Width + 2
 	}
 
-	theme := appCtx.Theme
-
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithFocused(true),
@@ -54,19 +87,18 @@ func NewModel(appCtx *appctx.Context) Model {
 		table.WithHeight(15),
 	)
 
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		MarginBottom(1).
-		Bold(true)
-	s.Selected = s.Selected.
-		Foreground(theme.Primary).
-		Background(theme.Secondary)
-	t.SetStyles(s)
-
-	return Model{
-		appCtx: appCtx,
+	m := Model{
+		KeyMap: DefaultKeyMap(),
 		table:  t,
 	}
+	m.SetStyle(DefaultStyles())
+
+	return m
+}
+
+func (m *Model) SetStyle(s Styles) {
+	m.styles = s
+	m.table.SetStyles(s.Table)
 }
 
 func (m *Model) SetSize(width, height int) {
@@ -93,48 +125,54 @@ func (m *Model) SetResults(results []*stdtype.Result) {
 	m.table.SetRows(rows)
 }
 
-func (m Model) Update(msg tea.KeyMsg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	if key.Matches(msg, keys.Keys.Enter) {
-		// TODO: should we add guard rails?
-		result := m.results[m.table.Cursor()]
-
-		return m, func() tea.Msg {
-			return SelectedMsg{result}
-		}
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	if msg, ok := msg.(tea.KeyPressMsg); ok && key.Matches(msg, m.KeyMap.Select) {
+		return m, m.selectResult()
 	}
 
+	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
 
 	return m, cmd
 }
 
+func (m Model) selectResult() tea.Cmd {
+	i := m.table.Cursor()
+	if i < 0 || i >= len(m.results) {
+		return nil
+	}
+
+	result := m.results[i]
+
+	return func() tea.Msg {
+		return ResultMsg{Result: result}
+	}
+}
+
 func (m Model) View() string {
 	main := lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.summaryView(),
+		m.renderSummary(),
 		"\n\n",
 		m.table.View(),
 	)
 
 	return common.Layout{
-		Style:  m.appCtx.ColorStyle,
-		Header: "stats",
+		Header: m.styles.Title.Render("stats"),
+		Footer: m.styles.Footer.Render(common.DefaultFooter()),
 		Main:   main,
 		Width:  m.width,
 		Height: m.height,
 	}.View()
 }
 
-func (m Model) summaryView() string {
-	style := m.appCtx.ColorStyle
+func (m Model) renderSummary() string {
 	sum := m.summary
 
 	stat := func(label, value string) string {
 		return lipgloss.JoinVertical(lipgloss.Left,
-			style.Success.Render(label),
-			style.Primary.Bold(true).Render(value),
+			m.styles.Label.Render(label),
+			m.styles.Value.Render(value),
 		)
 	}
 
@@ -152,4 +190,34 @@ func clock(d time.Duration) string {
 	secs := int(d.Round(time.Second).Seconds())
 
 	return fmt.Sprintf("%02d:%02d:%02d", secs/3600, secs/60%60, secs%60)
+}
+
+type summary struct {
+	tests      int
+	timeTyping time.Duration
+	bestWPM    float64
+	avgWPM     float64
+}
+
+// summarize skips invalid results, as they don't reflect real typing.
+func summarize(results []*stdtype.Result) summary {
+	var s summary
+	var sumWPM float64
+
+	for _, r := range results {
+		if r.Invalid {
+			continue
+		}
+
+		s.tests++
+		s.timeTyping += r.Duration
+		s.bestWPM = max(s.bestWPM, r.Stats.WPM)
+		sumWPM += r.Stats.WPM
+	}
+
+	if s.tests > 0 {
+		s.avgWPM = sumWPM / float64(s.tests)
+	}
+
+	return s
 }

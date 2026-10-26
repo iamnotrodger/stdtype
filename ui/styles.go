@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 	"github.com/iamnotrodger/stdytype/ui/components/result"
+	"github.com/iamnotrodger/stdytype/ui/components/stats"
 	"github.com/iamnotrodger/stdytype/ui/components/typing"
 	"github.com/iamnotrodger/stdytype/ui/theme"
 )
@@ -41,5 +43,19 @@ func resultStyles(t theme.Theme) result.Styles {
 			Raw: faint,
 			Err: failure,
 		},
+	}
+}
+
+func statsStyles(t theme.Theme) stats.Styles {
+	tbl := table.DefaultStyles()
+	tbl.Header = tbl.Header.MarginBottom(1).Bold(true)
+	tbl.Selected = tbl.Selected.Foreground(t.Primary).Background(t.Secondary)
+
+	return stats.Styles{
+		Title:  lipgloss.NewStyle(),
+		Label:  lipgloss.NewStyle().Foreground(t.Success),
+		Value:  lipgloss.NewStyle().Foreground(t.Primary).Bold(true),
+		Footer: lipgloss.NewStyle().Foreground(t.Faint),
+		Table:  tbl,
 	}
 }

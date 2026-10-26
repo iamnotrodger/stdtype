@@ -61,12 +61,13 @@ func NewModel(
 		screen:     screenTyping,
 		typing:     typing.NewModel(wordSource, &settings),
 		result:     result.NewModel(),
-		stats:      stats.NewModel(appCtx),
+		stats:      stats.NewModel(),
 		palette:    commandpalette.NewModel(*appCtx, BuildCommands(*theme.Default, wordSource.Lists())),
 	}
 
 	m.typing.SetStyle(typingStyles(appCtx.Theme))
 	m.result.SetStyle(resultStyles(appCtx.Theme))
+	m.stats.SetStyle(statsStyles(appCtx.Theme))
 
 	return m
 }
@@ -89,7 +90,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTyping(msg)
 	case typing.ResultMsg:
 		return m.onComplete(msg.Result)
-	case stats.SelectedMsg:
+	case stats.ResultMsg:
 		return m.onResult(msg.Result)
 	case commandpalette.CommandMsg:
 		return m.onCommand(msg)
