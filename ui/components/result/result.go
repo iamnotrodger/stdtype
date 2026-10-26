@@ -43,7 +43,7 @@ func (m Model) View() string {
 
 	graph := graphModel{
 		samples: m.result.Samples,
-		start:    m.result.Timestamp,
+		start:   m.result.Timestamp,
 
 		style: GraphStyle{
 			wpm: style.Success,

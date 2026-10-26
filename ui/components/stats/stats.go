@@ -2,6 +2,7 @@ package stats
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,7 +141,7 @@ func (m Model) summaryView() string {
 	gap := strings.Repeat(" ", 3)
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		stat("completed", fmt.Sprintf("%d", sum.tests)), gap,
+		stat("completed", strconv.Itoa(sum.tests)), gap,
 		stat("time typing", clock(sum.timeTyping)), gap,
 		stat("best wpm", fmt.Sprintf("%.0f", sum.bestWPM)), gap,
 		stat("avg wpm", fmt.Sprintf("%.0f", sum.avgWPM)),
@@ -149,5 +150,6 @@ func (m Model) summaryView() string {
 
 func clock(d time.Duration) string {
 	secs := int(d.Round(time.Second).Seconds())
+
 	return fmt.Sprintf("%02d:%02d:%02d", secs/3600, secs/60%60, secs%60)
 }

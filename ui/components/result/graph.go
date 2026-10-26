@@ -88,7 +88,7 @@ func (m graphModel) drawErrors(chart *timeserieslinechart.Model, times []time.Ti
 	}
 
 	chart.SetY2Axis(linechart.Axis{
-		Max: float64(maxErr),
+		Max:        float64(maxErr),
 		LabelStyle: m.style.err,
 	})
 	chart.DrawBrailleDataSets([]string{rawSet, wpmSet})
