@@ -15,35 +15,64 @@ import (
 )
 
 const (
-	graphRows = 8
-	yTicks    = 4
+	yTicks = 4
 
 	rawSet = "raw"
 	wpmSet = "wpm"
 )
 
-type GraphStyle struct {
-	wpm lipgloss.Style
-	raw lipgloss.Style
-	err lipgloss.Style
+type GraphStyles struct {
+	WPM lipgloss.Style
+	Raw lipgloss.Style
+	Err lipgloss.Style
 }
 
-type graphModel struct {
+func DefaultGraphStyles() GraphStyles {
+	return GraphStyles{
+		WPM: lipgloss.NewStyle().Foreground(lipgloss.Green),
+		Raw: lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		Err: lipgloss.NewStyle().Foreground(lipgloss.Red),
+	}
+}
+
+type Graph struct {
 	samples stdtype.Samples
-	start   time.Time
-	style   GraphStyle
+	styles  GraphStyles
 
-	width int
+	width, height int
 }
 
-func (m graphModel) View() string {
+func NewGraph() Graph {
+	return Graph{styles: DefaultGraphStyles()}
+}
+
+func (m *Graph) SetSamples(s stdtype.Samples) {
+	m.samples = s
+}
+
+func (m *Graph) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}
+
+func (m Graph) Styles() GraphStyles {
+	return m.styles
+}
+
+func (m *Graph) SetStyle(s GraphStyles) {
+	m.styles = s
+}
+
+func (m Graph) View() string {
 	n := len(m.samples.WPM)
 	if n < 2 {
 		return ""
 	}
 
+	// Two rows go to the X axis and its labels.
+	rows := max(m.height-2, yTicks)
 	xStep := max(m.width/6, 6)
-	times := sampleTimes(m.start, n)
+	times := elapsedSeconds(time.Unix(0, 0), n)
 
 	maxWpm, maxRaw := slices.Max(m.samples.WPM), slices.Max(m.samples.Raw)
 
@@ -51,7 +80,7 @@ func (m graphModel) View() string {
 	roundStep := math.Ceil(minStep/10) * 10
 	wpmStep := max(roundStep, 10)
 
-	chart := timeserieslinechart.New(m.width, graphRows+2,
+	chart := timeserieslinechart.New(m.width, rows+2,
 		timeserieslinechart.WithTimeRange(times[0], times[n-1]),
 		timeserieslinechart.WithYRange(0, wpmStep*yTicks),
 		timeserieslinechart.WithYLabelFormatter(intLabel),
@@ -59,12 +88,12 @@ func (m graphModel) View() string {
 	)
 
 	chart.SetXStep(xStep)
-	chart.SetYStep(graphRows / yTicks)
+	chart.SetYStep(rows / yTicks)
 
 	chart.SetDataSetLineStyle(rawSet, runes.ArcLineStyle)
 	chart.SetDataSetLineStyle(wpmSet, runes.ArcLineStyle)
-	chart.SetDataSetStyle(rawSet, m.style.raw)
-	chart.SetDataSetStyle(wpmSet, m.style.wpm)
+	chart.SetDataSetStyle(rawSet, m.styles.Raw)
+	chart.SetDataSetStyle(wpmSet, m.styles.WPM)
 
 	for i := range n {
 		chart.PushDataSet(rawSet, timeserieslinechart.TimePoint{Time: times[i], Value: m.samples.Raw[i]})
@@ -79,7 +108,7 @@ func (m graphModel) View() string {
 
 // drawErrors marks each second that had errors with a "×" on a right Y axis.
 // Adding that axis narrows the plot, so the lines are redrawn to match.
-func (m graphModel) drawErrors(chart *timeserieslinechart.Model, times []time.Time) {
+func (m Graph) drawErrors(chart *timeserieslinechart.Model, times []time.Time) {
 	errs := m.samples.Err[:min(len(m.samples.Err), len(times))]
 
 	maxErr := slices.Max(append([]int{0}, errs...))
@@ -89,7 +118,7 @@ func (m graphModel) drawErrors(chart *timeserieslinechart.Model, times []time.Ti
 
 	chart.SetY2Axis(linechart.Axis{
 		Max:        float64(maxErr),
-		LabelStyle: m.style.err,
+		LabelStyle: m.styles.Err,
 	})
 	chart.DrawBrailleDataSets([]string{rawSet, wpmSet})
 
@@ -105,7 +134,7 @@ func (m graphModel) drawErrors(chart *timeserieslinechart.Model, times []time.Ti
 
 		chart.Canvas.SetCell(
 			cellAt(chart, f),
-			canvas.NewCellWithStyle('×', m.style.err),
+			canvas.NewCellWithStyle('×', m.styles.Err),
 		)
 	}
 }
@@ -144,7 +173,7 @@ func elapsedLabel(start time.Time) linechart.LabelFormatter {
 	}
 }
 
-func sampleTimes(start time.Time, n int) []time.Time {
+func elapsedSeconds(start time.Time, n int) []time.Time {
 	ts := make([]time.Time, n)
 
 	for i := range ts {

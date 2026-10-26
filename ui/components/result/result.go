@@ -7,75 +7,95 @@ import (
 	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/common"
-	appctx "github.com/iamnotrodger/stdytype/ui/context"
 )
 
+const graphHeight = 10
+
+type Styles struct {
+	Title   lipgloss.Style
+	Invalid lipgloss.Style
+	Label   lipgloss.Style
+	Value   lipgloss.Style
+	Footer  lipgloss.Style
+	Graph   GraphStyles
+}
+
+func DefaultStyles() Styles {
+	return Styles{
+		Title:   lipgloss.NewStyle().Bold(true),
+		Invalid: lipgloss.NewStyle().Foreground(lipgloss.Red),
+		Label:   lipgloss.NewStyle().Bold(true),
+		Value:   lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		Footer:  lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		Graph:   DefaultGraphStyles(),
+	}
+}
+
 type Model struct {
-	appCtx *appctx.Context
 	result *stdtype.Result
+	styles Styles
+	graph  Graph
 
 	width, height int
 }
 
-func NewMode(appCtx *appctx.Context) Model {
-	return Model{appCtx: appCtx}
+func NewModel() Model {
+	return Model{
+		styles: DefaultStyles(),
+		graph:  NewGraph(),
+	}
 }
 
 func (m *Model) SetResult(result *stdtype.Result) {
 	m.result = result
+	m.graph.SetSamples(result.Samples)
 }
 
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.graph.SetSize(graphWidth(width), graphHeight)
+}
+
+func (m *Model) SetStyle(s Styles) {
+	m.styles = s
+	m.graph.SetStyle(s.Graph)
 }
 
 func (m Model) View() string {
-	var b strings.Builder
+	if m.result == nil {
+		return ""
+	}
 
-	style := m.appCtx.ColorStyle
+	var b strings.Builder
 
 	if m.result.Invalid {
 		invalid := m.result.InvalidReason + " -- result not saved"
-		b.WriteString(style.Error.Render(invalid))
+		b.WriteString(m.styles.Invalid.Render(invalid))
 		b.WriteString("\n\n")
 	}
 
-	graph := graphModel{
-		samples: m.result.Samples,
-		start:   m.result.Timestamp,
-
-		style: GraphStyle{
-			wpm: style.Success,
-			raw: style.Faint,
-			err: style.Error,
-		},
-
-		width: min(72, max(m.width-8, 20)),
-	}
-
-	b.WriteString(graph.View())
+	b.WriteString(m.graph.View())
 	b.WriteString("\n\n")
-	b.WriteString(m.statsView())
+	b.WriteString(m.renderStats())
 
 	return common.Layout{
-		Style:  style,
-		Header: style.Primary.Bold(true).Render("results"),
+		Header: m.styles.Title.Render("results"),
 		Main:   b.String(),
+		Footer: m.styles.Footer.Render(common.DefaultFooter()),
 		Width:  m.width,
 		Height: m.height,
 	}.View()
 }
 
-func (m Model) statsView() string {
+func (m Model) renderStats() string {
 	result := m.result
 	stats := m.result.Stats
-	style := m.appCtx.ColorStyle
 
 	stat := func(label, value string) string {
 		return lipgloss.JoinVertical(lipgloss.Left,
-			style.Primary.Bold(true).Render(label),
-			style.Faint.Render(value),
+			m.styles.Label.Render(label),
+			m.styles.Value.Render(value),
 		)
 	}
 
@@ -98,4 +118,8 @@ func (m Model) statsView() string {
 	)
 
 	return lipgloss.JoinVertical(lipgloss.Left, headline, "", details)
+}
+
+func graphWidth(width int) int {
+	return min(72, max(width-8, 20))
 }
