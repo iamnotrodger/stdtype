@@ -1,17 +1,17 @@
 package typing
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/cursor"
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
 	"github.com/iamnotrodger/stdytype/ui/common"
-	appctx "github.com/iamnotrodger/stdytype/ui/context"
-	"github.com/iamnotrodger/stdytype/ui/keys"
 )
 
 type TickMsg struct {
@@ -19,18 +19,38 @@ type TickMsg struct {
 	Time time.Time
 }
 
-type FinishedMsg struct {
+type ResultMsg struct {
 	Result *stdtype.Result
 }
 
-func tick(id int) tea.Cmd {
-	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+func tick(id int, elapsed time.Duration) tea.Cmd {
+	next := elapsed.Truncate(time.Second) + time.Second
+
+	return tea.Tick(next-elapsed, func(t time.Time) tea.Msg {
 		return TickMsg{ID: id, Time: t}
 	})
 }
 
+type Styles struct {
+	ConfigActive    lipgloss.Style
+	ConfigInactive  lipgloss.Style
+	ConfigSeparator lipgloss.Style
+	Footer          lipgloss.Style
+	TextArea        TextAreaStyles
+}
+
+func DefaultStyles() Styles {
+	return Styles{
+		ConfigActive:    lipgloss.NewStyle().Bold(true),
+		ConfigInactive:  lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		ConfigSeparator: lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		Footer:          lipgloss.NewStyle().Foreground(lipgloss.BrightBlack),
+		TextArea:        DefaultTextAreaStyles(),
+	}
+}
+
 type Model struct {
-	appCtx     *appctx.Context
+	styles     Styles
 	wordSource stdtype.WordSource
 	settings   *stdtype.Settings
 
@@ -38,31 +58,26 @@ type Model struct {
 	test    *stdtype.TypeTest
 	samples stdtype.Samples
 
-	prevStats  stdtype.Stats
-	afkSeconds int
-	tickID     int
+	prevStats   stdtype.Stats
+	prevElapsed time.Duration
+	afkSeconds  int
+	tickID      int
 
-	cursor cursor.Model
-	fade   animation.Fade
+	textarea TextArea
+	fade     animation.Fade
 
 	width, height int
 }
 
 func NewModel(
-	appCtx *appctx.Context,
 	wordSource stdtype.WordSource,
 	settings *stdtype.Settings,
 ) Model {
-	c := cursor.New()
-	c.Style = lipgloss.NewStyle().Reverse(true)
-	c.TextStyle = appCtx.ColorStyle.Faint
-	c.Focus()
-
 	m := Model{
-		appCtx:     appCtx,
 		wordSource: wordSource,
 		settings:   settings,
-		cursor:     c,
+		styles:     DefaultStyles(),
+		textarea:   NewTextArea(),
 		fade:       animation.NewFade(),
 	}
 
@@ -70,7 +85,7 @@ func NewModel(
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tick(m.tickID), cursor.Blink)
+	return cursor.Blink
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -84,44 +99,84 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	m.cursor, cmd = m.cursor.Update(msg)
+	m.textarea, cmd = m.textarea.Update(msg)
 
 	return m, cmd
 }
 
 func (m Model) View() string {
-	elapsed := m.test.Elapsed().Seconds()
-	remaining := m.settings.Duration - int(elapsed)
+	m.textarea.SetFade(m.fade.Value)
+	m.textarea.SetSize(wrapWidth(m.width), clampLines(m.settings.Lines))
 
-	v := view{
-		style:       m.appCtx.ColorStyle,
-		cursor:      m.cursor,
-		mode:        m.test.Mode,
-		target:      m.test.Target,
-		typed:       m.test.Typed,
-		duration:    m.settings.Duration,
-		wordCount:   m.settings.WordCount,
-		visibleLine: m.settings.Lines,
-		remaining:   remaining,
-		wrap:        wrapWidth(m.width),
-		fade:        m.fade.Value,
-	}
-
-	count := v.counter()
 	main := lipgloss.JoinVertical(
 		lipgloss.Center,
-		count,
+		m.renderProgress(),
 		"",
-		v.render(),
+		m.textarea.View(),
 	)
 
 	return common.Layout{
-		Style:  m.appCtx.ColorStyle,
-		Header: v.modeBar(),
+		Footer: m.styles.Footer.Render(common.DefaultFooter()),
+		Header: m.renderConfigBar(),
 		Main:   main,
 		Width:  m.width,
 		Height: m.height,
 	}.View()
+}
+
+func (m Model) renderConfigBar() string {
+	opt := func(label string, on bool) string {
+		if on {
+			return m.styles.ConfigActive.Render(label)
+		}
+
+		return m.styles.ConfigInactive.Render(label)
+	}
+
+	isTimeMode := m.test.Mode == stdtype.TimeMode
+	modes := opt("time", isTimeMode) + " " + opt("words", !isTimeMode)
+
+	selected := m.settings.WordCount
+	options := common.WordOptions
+	if isTimeMode {
+		selected = m.settings.Duration
+		options = common.DurationOptions
+	}
+
+	labels := make([]string, 0, len(options))
+	for _, d := range options {
+		label := strconv.Itoa(d)
+		on := d == selected
+		labels = append(labels, opt(label, on))
+	}
+
+	sep := m.styles.ConfigSeparator.Render(" | ")
+
+	return modes + sep + strings.Join(labels, " ")
+}
+
+func (m Model) renderProgress() string {
+	if m.test.Mode == stdtype.TimeMode {
+		remaining := m.settings.Duration - int(m.test.Elapsed().Seconds())
+
+		return animation.FadeRender(m.fade.Value, strconv.Itoa(max(remaining, 0)))
+	}
+
+	count := 0
+	typed := strings.TrimRight(string(m.test.Typed), " ")
+
+	if typed != "" {
+		count = strings.Count(typed, " ")
+	}
+
+	progress := fmt.Sprintf("%d/%d", count, m.settings.WordCount)
+
+	return animation.FadeRender(m.fade.Value, progress)
+}
+
+func (m *Model) SetStyle(s Styles) {
+	m.styles = s
+	m.textarea.SetStyle(s.TextArea)
 }
 
 func (m *Model) SetSize(width, height int) {
@@ -151,8 +206,11 @@ func (m Model) reset() Model {
 	m.test = stdtype.NewTypeTest(words, m.mode)
 	m.samples = stdtype.Samples{}
 	m.prevStats = stdtype.Stats{}
+	m.prevElapsed = 0
 	m.afkSeconds = 0
 	m.tickID++
+
+	m.textarea.SetTest(m.test)
 
 	return m
 }
@@ -161,22 +219,34 @@ func (m Model) Restart() (Model, tea.Cmd) {
 	m = m.reset()
 	m.fade.Start()
 
-	return m, tea.Batch(
-		tick(m.tickID),
-		animation.Tick(),
-		m.cursor.SetMode(cursor.CursorBlink),
-	)
+	return m, tea.Batch(animation.Tick(), cursor.Blink)
 }
 
 func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
-	if msg.ID != m.tickID || m.test.Completed() {
+	if msg.ID != m.tickID || !m.test.Started() || m.test.Completed() {
 		return m, nil
 	}
 
-	if !m.test.Started() {
-		return m, tick(m.tickID)
+	if m.mode == stdtype.TimeMode {
+		duration := time.Duration(m.settings.Duration) * time.Second
+		if m.test.Elapsed() >= duration {
+			return m.onFinish()
+		}
 	}
 
+	prevKeystrokes := m.prevStats.Keystrokes
+	m = m.recordSample()
+
+	if m.prevStats.Keystrokes == prevKeystrokes {
+		m.afkSeconds++
+	}
+
+	return m, tick(m.tickID, m.test.Elapsed())
+}
+
+func (m Model) recordSample() Model {
+	elapsed := m.test.Elapsed()
+	secs := (elapsed - m.prevElapsed).Seconds()
 	stats := stdtype.ComputeStats(m.test)
 
 	rawDelta := max(0, stats.TypedChars-m.prevStats.TypedChars)
@@ -186,58 +256,46 @@ func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
 	prevErrKeys := m.prevStats.Keystrokes - m.prevStats.CorrectKeystrokes
 	errDelta := max(0, errKeys-prevErrKeys)
 
-	// Per-second WPM samples (chars/5 per 1/60 min).
-	m.samples.Raw = append(m.samples.Raw, float64(rawDelta)/5.0*60.0)
-	m.samples.WPM = append(m.samples.WPM, float64(netDelta)/5.0*60.0)
+	m.samples.Raw = append(m.samples.Raw, wpm(rawDelta, secs))
+	m.samples.WPM = append(m.samples.WPM, wpm(netDelta, secs))
 	m.samples.Err = append(m.samples.Err, errDelta)
 
-	if stats.Keystrokes == m.prevStats.Keystrokes {
-		m.afkSeconds++
-	}
-
 	m.prevStats = stats
+	m.prevElapsed = elapsed
 
-	if m.mode == stdtype.TimeMode {
-		duration := time.Duration(m.settings.Duration) * time.Second
-		if m.test.Elapsed() >= duration {
-			return m.onFinish()
-		}
-	}
+	return m
+}
 
-	return m, tick(m.tickID)
+// wpm uses the standard 5 characters per word.
+func wpm(chars int, secs float64) float64 {
+	return float64(chars) / 5 / (secs / 60)
 }
 
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
-	if m.test.Finished() {
-		return m, nil
-	}
+	wasStarted := m.test.Started()
 
-	switch {
-	case key.Matches(msg, keys.Keys.DeleteWord):
-		m.test.DeleteWord()
-	case key.Matches(msg, keys.Keys.Backspace):
-		m.test.Backspace()
-	case msg.Text != "":
-		for _, r := range msg.Text {
-			m.test.Type(r)
-		}
-	default:
-		return m, nil
-	}
+	var cmd tea.Cmd
+	m.textarea, cmd = m.textarea.Update(msg)
 
-	if m.test.Started() {
-		m.cursor.SetMode(cursor.CursorStatic)
-	}
-
-	if m.test.Completed() {
+	if !m.test.Finished() && m.test.Completed() {
 		return m.onFinish()
 	}
 
-	return m, nil
+	if !wasStarted && m.test.Started() {
+		cmd = tea.Batch(cmd, tick(m.tickID, m.test.Elapsed()))
+	}
+
+	return m, cmd
 }
 
 func (m Model) onFinish() (Model, tea.Cmd) {
 	m.test.Finish()
+
+	// A sliver of a second would turn one keystroke into a WPM spike.
+	if m.test.Elapsed()-m.prevElapsed >= time.Second/2 {
+		m = m.recordSample()
+	}
+
 	stats := stdtype.ComputeStats(m.test)
 	consistency := stdtype.Consistency(m.samples.Raw)
 
@@ -257,13 +315,13 @@ func (m Model) onFinish() (Model, tea.Cmd) {
 		Duration:    m.test.Elapsed(),
 	}
 
-	if stdtype.IsAFK(m.afkSeconds, int(m.test.Elapsed())) {
+	if stdtype.IsAFK(m.afkSeconds, int(m.test.Elapsed().Seconds())) {
 		result.Invalid = true
 		result.InvalidReason = "afk detected"
 	}
 
 	return m, func() tea.Msg {
-		return FinishedMsg{Result: result}
+		return ResultMsg{Result: result}
 	}
 }
 
@@ -273,4 +331,16 @@ func (m Model) onAnimate() (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func wrapWidth(width int) int {
+	if width <= 0 {
+		return 80
+	}
+
+	return max(min(width-8, 60), 20)
+}
+
+func clampLines(n int) int {
+	return min(max(n, 3), 6)
 }
