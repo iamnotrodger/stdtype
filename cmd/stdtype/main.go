@@ -85,6 +85,15 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "local.NewSettingsRepo")
 			}
 
+			settings, err := settingsRepo.GetSettings()
+			if err != nil {
+				return errors.Wrap(err, "settingsRepo.GetSettings")
+			}
+
+			if err := settings.Validate(wordSource.Lists()); err != nil {
+				return errors.Wrap(err, "invalid settings")
+			}
+
 			model, err := ui.NewModel(wordSource, statsRepo, settingsRepo)
 			if err != nil {
 				return errors.Wrap(err, "ui.NewModel")
@@ -115,7 +124,7 @@ func main() {
 	rootCmd := NewRootCmd()
 
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "%v", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }

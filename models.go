@@ -1,6 +1,11 @@
 package stdtype
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"slices"
+	"time"
+)
 
 type Mode int
 
@@ -114,4 +119,38 @@ func DefaultSettings() Settings {
 		Theme:     "default",
 		WordList:  "english",
 	}
+}
+
+var (
+	ErrInvalidMode      = errors.New("invalid mode")
+	ErrInvalidDuration  = errors.New("invalid duration")
+	ErrInvalidWordCount = errors.New("invalid words")
+	ErrInvalidLines     = errors.New("invalid lines")
+	ErrInvalidList      = errors.New("invalid list")
+)
+
+func (s Settings) Validate(lists []string) error {
+	var errs []error
+
+	if ParseMode(s.Mode) == InvalidMode {
+		errs = append(errs, fmt.Errorf("%w %q: must be %q or %q", ErrInvalidMode, s.Mode, TimeMode, WordsMode))
+	}
+
+	if s.Duration <= 0 {
+		errs = append(errs, fmt.Errorf("%w %d: must be positive", ErrInvalidDuration, s.Duration))
+	}
+
+	if s.WordCount <= 0 {
+		errs = append(errs, fmt.Errorf("%w %d: must be positive", ErrInvalidWordCount, s.WordCount))
+	}
+
+	if s.Lines <= 0 {
+		errs = append(errs, fmt.Errorf("%w %d: must be positive", ErrInvalidLines, s.Lines))
+	}
+
+	if !slices.Contains(lists, s.WordList) {
+		errs = append(errs, fmt.Errorf("%w %q: must be one of %v", ErrInvalidList, s.WordList, lists))
+	}
+
+	return errors.Join(errs...)
 }
