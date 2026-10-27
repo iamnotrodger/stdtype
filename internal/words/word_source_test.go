@@ -264,8 +264,67 @@ func TestWordSource_Generate_Decorate(t *testing.T) {
 
 		for range 1000 {
 			got := wordSource.decorate("prev,", "word")
-			assert.NotEqual(t, "word;", got)
+			assert.Equal(t, "word", got)
 		}
+	})
+
+	t.Run("should attach a comma to roughly a fifth of words", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		commas := 0
+		for range 1000 {
+			if wordSource.decorate("prev", "word") == "word," {
+				commas++
+			}
+		}
+
+		assert.InDelta(t, 185, commas, 40)
+	})
+
+	t.Run("when the previous word is a dash then should never add another", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		for range 1000 {
+			assert.NotEqual(t, "-", wordSource.decorate("-", "word"))
+		}
+	})
+
+	t.Run("should sometimes replace a word with its contraction", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		seen := map[string]bool{}
+		for range 1000 {
+			seen[wordSource.decorate("prev", "do")] = true
+		}
+
+		assert.True(t, seen["don't"])
+		assert.True(t, seen["do"])
+	})
+}
+
+func TestWordSource_Contract(t *testing.T) {
+	t.Run("should keep a word that has no contraction", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		assert.Equal(t, "word", wordSource.contract("word"))
+	})
+
+	t.Run("should pick one of the word's contractions", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		assert.Contains(t, []string{"it's", "it'll"}, wordSource.contract("it"))
+	})
+
+	t.Run("should keep the capital when contracting I", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		assert.Contains(t, []string{"I'm", "I'll", "I've", "I'd"}, wordSource.contract("I"))
 	})
 }
 
@@ -297,6 +356,16 @@ func TestWordSource_Generate_PunctuateWord(t *testing.T) {
 		got := wordSource.punctuateWord("prev", "end", 1, 2)
 		assert.Contains(t, terminators, got)
 	})
+
+	t.Run("should not end a sentence on the second-to-last word", func(t *testing.T) {
+		wordSource, err := NewWordSource(1)
+		require.NoError(t, err)
+
+		for range 1000 {
+			got := wordSource.punctuateWord("prev", "end", 3, 5)
+			assert.False(t, strings.ContainsAny(got, ".?!"), got)
+		}
+	})
 }
 
 func TestWordSource_Generate_Punctuate(t *testing.T) {
@@ -307,19 +376,22 @@ func TestWordSource_Generate_Punctuate(t *testing.T) {
 		words := []string{"the", "quick", "brown", "fox", "jumps"}
 		wordSource.punctuate(words)
 
-		expected := []string{"The", "quick", "brown", "fox", "jumps."}
-		assert.Equal(t, expected, words)
+		assert.Equal(t, "The", words[0])
+		assert.Contains(t, []string{"jumps.", "jumps?", "jumps!"}, words[len(words)-1])
 	})
 
 	t.Run("should start a fresh sentence after a terminator with a capital", func(t *testing.T) {
 		wordSource, err := NewWordSource(1)
 		require.NoError(t, err)
 
-		words := []string{"the", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog"}
+		words := strings.Fields(strings.Repeat("the quick brown fox jumps ", 40))
 		wordSource.punctuate(words)
 
-		expected := []string{"The", "quick", "brown.", "Fox", "jumps", "over", "the", "lazy", "dog."}
-		assert.Equal(t, expected, words)
+		for i := 1; i < len(words); i++ {
+			if strings.ContainsAny(lastChar(words[i-1]), ".?!") {
+				assert.Regexp(t, `^[A-Z]`, words[i], "after %q", words[i-1])
+			}
+		}
 	})
 
 	t.Run("should leave an empty passage untouched", func(t *testing.T) {
@@ -344,6 +416,12 @@ func mustBuildWordSet(tb testing.TB, words []string) map[string]struct{} {
 	return m
 }
 
+func lastChar(s string) string {
+	r := []rune(s)
+
+	return string(r[len(r)-1])
+}
+
 func mustDecorate(word string) []string {
 	return []string{
 		word,
@@ -353,6 +431,6 @@ func mustDecorate(word string) []string {
 		word + `:`,
 		word + `;`,
 		word + `,`,
-		word + " -",
+		"-",
 	}
 }

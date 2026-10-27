@@ -42,6 +42,35 @@ var (
 	)
 )
 
+var contractions = map[string][]string{
+	"are":    {"aren't"},
+	"can":    {"can't"},
+	"could":  {"couldn't"},
+	"did":    {"didn't"},
+	"does":   {"doesn't"},
+	"do":     {"don't"},
+	"had":    {"hadn't"},
+	"has":    {"hasn't"},
+	"have":   {"haven't"},
+	"is":     {"isn't"},
+	"it":     {"it's", "it'll"},
+	"i":      {"i'm", "i'll", "i've", "i'd"},
+	"you":    {"you'll", "you're", "you've", "you'd"},
+	"that":   {"that's", "that'll", "that'd"},
+	"must":   {"mustn't", "must've"},
+	"there":  {"there's", "there'll", "there'd"},
+	"he":     {"he's", "he'll", "he'd"},
+	"she":    {"she's", "she'll", "she'd"},
+	"we":     {"we're", "we'll", "we'd"},
+	"they":   {"they're", "they'll", "they'd"},
+	"should": {"shouldn't", "should've"},
+	"was":    {"wasn't"},
+	"were":   {"weren't"},
+	"will":   {"won't"},
+	"would":  {"wouldn't", "would've"},
+	"going":  {"goin'"},
+}
+
 type WordList struct {
 	Name  string   `json:"name"`
 	Words []string `json:"words"`
@@ -199,8 +228,9 @@ func (w *WordSource) punctuateWord(prev, word string, index, maxIndex int) strin
 		return capitalize(word)
 	}
 
-	endSentence := w.rng.Float64() < 0.1
-	if isLast || (endSentence && lastChar != ',') {
+	// Never end on a one-word sentence.
+	endSentence := w.rng.Float64() < 0.1 && lastChar != ',' && index != maxIndex-2
+	if isLast || endSentence {
 		return word + w.terminator()
 	}
 
@@ -221,24 +251,42 @@ func (w *WordSource) terminator() string {
 
 func (w *WordSource) decorate(prev, word string) string {
 	r := w.rng
+	last := lastRune(prev)
+
 	switch {
-	case r.Float64() < 0.01:
+	case r.Float64() < 0.01 && last != ',':
 		return `"` + word + `"`
-	case r.Float64() < 0.011:
+	case r.Float64() < 0.011 && last != ',':
 		return `'` + word + `'`
-	case r.Float64() < 0.012:
+	case r.Float64() < 0.012 && last != ',':
 		return `(` + word + `)`
-	case r.Float64() < 0.013:
+	case r.Float64() < 0.013 && last != ',' && last != ';' && last != ':':
 		return word + `:`
-	case r.Float64() < 0.014 && lastRune(prev) != ',':
+	case r.Float64() < 0.014 && last != ',' && prev != "-":
+		return "-"
+	case r.Float64() < 0.015 && last != ',' && last != ';':
 		return word + `;`
-	case r.Float64() < 0.015 && lastRune(prev) != ',':
+	case r.Float64() < 0.2 && last != ',':
 		return word + `,`
-	case r.Float64() < 0.016 && lastRune(prev) != ',':
-		return word + ` -`
+	case r.Float64() < 0.5:
+		return w.contract(word)
 	}
 
 	return word
+}
+
+func (w *WordSource) contract(word string) string {
+	options, ok := contractions[strings.ToLower(word)]
+	if !ok {
+		return word
+	}
+
+	c := options[w.rng.Intn(len(options))]
+	if unicode.IsUpper([]rune(word)[0]) {
+		return capitalize(c)
+	}
+
+	return c
 }
 
 // normalize returns word without punctuation and capitalization.
