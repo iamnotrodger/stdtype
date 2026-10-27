@@ -2,26 +2,44 @@ package stdtype
 
 import (
 	"math"
-	"strings"
+	"slices"
 	"time"
-	"unicode"
 )
 
 const (
 	AFKThreshold  = 0.5
 	MinAFKSeconds = 7
+
+	MaxExtraChars = 20
 )
 
 func NewTypeTest(words []string, mode Mode) *TypeTest {
+	runes := make([][]rune, len(words))
+	for i, w := range words {
+		runes[i] = []rune(w)
+	}
+
 	return &TypeTest{
-		Target: []rune(strings.Join(words, " ")),
+		Words:  runes,
+		Inputs: [][]rune{{}},
 		Mode:   mode,
 		clock:  time.Now,
 	}
 }
 
 func (t *TypeTest) Type(r rune) {
-	if t.finished || len(t.Typed) >= len(t.Target) {
+	active := t.ActiveWord()
+	if t.finished || active >= len(t.Words) {
+		return
+	}
+
+	word, input := t.Words[active], t.Inputs[active]
+
+	if r == ' ' && len(input) == 0 {
+		return
+	}
+
+	if r != ' ' && len(input) >= len(word)+MaxExtraChars {
 		return
 	}
 
@@ -30,34 +48,61 @@ func (t *TypeTest) Type(r rune) {
 		t.startedAt = t.clock()
 	}
 
-	idx := len(t.Typed)
 	t.totalKeystrokes++
 
-	if r == t.Target[idx] {
+	if r == ' ' {
+		// The last word has no trailing space, so committing it is a miss.
+		if len(input) == len(word) && active < len(t.Words)-1 {
+			t.correctKeyStrokes++
+		}
+
+		t.Inputs = append(t.Inputs, []rune{})
+
+		return
+	}
+
+	if len(input) < len(word) && word[len(input)] == r {
 		t.correctKeyStrokes++
 	}
 
-	t.Typed = append(t.Typed, r)
+	t.Inputs[active] = append(input, r)
 }
 
 func (t *TypeTest) Backspace() {
-	if len(t.Typed) > 0 {
-		t.Typed = t.Typed[:len(t.Typed)-1]
+	active := t.ActiveWord()
+	if input := t.Inputs[active]; len(input) > 0 {
+		t.Inputs[active] = input[:len(input)-1]
+
+		return
+	}
+
+	if t.canGoBack() {
+		t.Inputs = t.Inputs[:active]
 	}
 }
 
 func (t *TypeTest) DeleteWord() {
-	i := len(t.Typed)
+	active := t.ActiveWord()
+	if len(t.Inputs[active]) > 0 {
+		t.Inputs[active] = []rune{}
 
-	for i > 0 && unicode.IsSpace(t.Typed[i-1]) {
-		i--
+		return
 	}
 
-	for i > 0 && !unicode.IsSpace(t.Typed[i-1]) {
-		i--
+	if t.canGoBack() {
+		t.Inputs = t.Inputs[:active]
+		t.Inputs[active-1] = []rune{}
 	}
+}
 
-	t.Typed = t.Typed[:i]
+func (t *TypeTest) canGoBack() bool {
+	prev := t.ActiveWord() - 1
+
+	return prev >= 0 && !slices.Equal(t.Inputs[prev], t.Words[prev])
+}
+
+func (t *TypeTest) ActiveWord() int {
+	return len(t.Inputs) - 1
 }
 
 func (t *TypeTest) Started() bool {
@@ -71,7 +116,11 @@ func (t *TypeTest) Finished() bool {
 func (t *TypeTest) Completed() bool {
 	switch t.Mode {
 	case WordsMode:
-		return len(t.Typed) >= len(t.Target)
+		last := len(t.Words) - 1
+		active := t.ActiveWord()
+
+		return active > last ||
+			(active == last && slices.Equal(t.Inputs[active], t.Words[active]))
 	case TimeMode:
 		return t.finished
 	default:
@@ -100,30 +149,94 @@ func (t *TypeTest) Elapsed() time.Duration {
 	return end.Sub(t.startedAt)
 }
 
-// CorrectChars counts typed characters that match the target at the same position.
-func (t *TypeTest) CorrectChars() int {
-	n := 0
+type charCounts struct {
+	allCorrect  int
+	correctWord int
+	incorrect   int
+	extra       int
+	missed      int
+}
 
-	for i, r := range t.Typed {
-		if i < len(t.Target) && r == t.Target[i] {
-			n++
+// Words are compared with their commit space, so a space only counts as
+// correct when its word is.
+func (t *TypeTest) chars() charCounts {
+	var total charCounts
+
+	active := t.ActiveWord()
+
+	for i := 0; i < len(t.Inputs) && i < len(t.Words); i++ {
+		committed := i < active
+		input, target := t.Inputs[i], t.Words[i]
+
+		if !committed && len(input) == 0 {
+			break
+		}
+
+		if committed {
+			input = append(slices.Clone(input), ' ')
+		}
+
+		if i < len(t.Words)-1 {
+			target = append(slices.Clone(target), ' ')
+		}
+
+		// The active word is still being typed, so its untyped rest isn't missed.
+		c := countChars(input, target, !committed)
+
+		total.allCorrect += c.allCorrect
+		total.correctWord += c.correctWord
+		total.incorrect += c.incorrect
+		total.extra += c.extra
+		total.missed += c.missed
+	}
+
+	return total
+}
+
+func countChars(input, target []rune, creditPartial bool) charCounts {
+	var c charCounts
+
+	wordCorrect := slices.Equal(input, target)
+	partiallyCorrect := len(input) <= len(target) && slices.Equal(input, target[:len(input)])
+	inputHasSpace := slices.Contains(input, ' ')
+
+	for i := range max(len(input), len(target)) {
+		switch {
+		case i < len(input) && i < len(target) && input[i] == target[i]:
+			if target[i] == ' ' && !wordCorrect {
+				c.extra++
+			} else {
+				c.allCorrect++
+			}
+
+			if wordCorrect || (creditPartial && partiallyCorrect) {
+				c.correctWord++
+			}
+		case i >= len(input):
+			if !creditPartial {
+				c.missed++
+			}
+		case i >= len(target) || (target[i] == ' ' && !inputHasSpace):
+			c.extra++
+		default:
+			c.incorrect++
 		}
 	}
 
-	return n
+	return c
 }
 
-// ComputeStats WPM uses the standard 5-characters-per-word convention over correct characters;
-// raw uses all typed characters.
+// ComputeStats WPM counts only characters of correctly typed words; raw counts
+// every typed character.
 func ComputeStats(t *TypeTest) Stats {
 	mins := t.Elapsed().Minutes()
-	correct := t.CorrectChars()
-	typed := len(t.Typed)
+	c := t.chars()
+	typed := c.allCorrect + c.incorrect + c.extra
 
 	var wpm, raw float64
 
 	if mins > 0 {
-		wpm = (float64(correct) / 5.0) / mins
+		wpm = (float64(c.correctWord) / 5.0) / mins
 		raw = (float64(typed) / 5.0) / mins
 	}
 
@@ -136,11 +249,12 @@ func ComputeStats(t *TypeTest) Stats {
 		WPM:               wpm,
 		RawWPM:            raw,
 		Accuracy:          acc,
-		CorrectChars:      correct,
+		CorrectChars:      c.correctWord,
+		IncorrectChars:    c.incorrect,
+		ExtraChars:        c.extra,
+		MissedChars:       c.missed,
 		TypedChars:        typed,
 		Keystrokes:        t.totalKeystrokes,
-		IncorrectChars:    typed - correct,
-		MissedChars:       0,
 		CorrectKeystrokes: t.correctKeyStrokes,
 	}
 }

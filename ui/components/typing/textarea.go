@@ -111,13 +111,14 @@ func (m TextArea) View() string {
 		return ""
 	}
 
-	lines := wrapLines(m.test.Target, m.width)
-	top := scrollTop(lines, m.height, len(m.test.Typed))
+	cells, caret := m.cells()
+	lines := wrapLines(cellRunes(cells), m.width)
+	top := scrollTop(lines, m.height, caret)
 	visible := lines[top:min(top+m.height, len(lines))]
 
 	rows := make([]string, 0, m.height)
 	for _, l := range visible {
-		row := m.renderLine(l)
+		row := m.renderLine(cells[l.start:l.end])
 		if pad := m.width - lipgloss.Width(row); pad > 0 {
 			row += strings.Repeat(" ", pad)
 		}
@@ -156,59 +157,133 @@ func (m *TextArea) SetStyle(s TextAreaStyles) {
 	m.cursor.TextStyle = s.CursorText
 }
 
-func (m TextArea) renderLine(l line) string {
-	target := m.test.Target
+type cellState int
 
+const (
+	untyped cellState = iota
+	correct
+	incorrect
+	caret
+)
+
+type cell struct {
+	r     rune
+	state cellState
+}
+
+func (m TextArea) cells() ([]cell, int) {
+	t := m.test
+	active := t.ActiveWord()
+
+	var cells []cell
+
+	caretAt := -1
+
+	for i, word := range t.Words {
+		var input []rune
+		if i <= active {
+			input = t.Inputs[i]
+		}
+
+		committed := i < active
+
+		for j, r := range word {
+			state := untyped
+
+			switch {
+			case j < len(input) && input[j] == r:
+				state = correct
+			case j < len(input) || committed:
+				state = incorrect
+			case i == active && j == len(input):
+				state = caret
+				caretAt = len(cells)
+			}
+
+			cells = append(cells, cell{r, state})
+		}
+
+		for _, r := range input[min(len(input), len(word)):] {
+			cells = append(cells, cell{r, incorrect})
+		}
+
+		if i == len(t.Words)-1 {
+			break
+		}
+
+		state := untyped
+		if committed {
+			state = correct
+		}
+
+		if i == active && len(input) >= len(word) {
+			state = caret
+			caretAt = len(cells)
+		}
+
+		cells = append(cells, cell{' ', state})
+	}
+
+	if caretAt < 0 {
+		caretAt = len(cells)
+		cells = append(cells, cell{' ', caret})
+	}
+
+	return cells, caretAt
+}
+
+func cellRunes(cells []cell) []rune {
+	runes := make([]rune, len(cells))
+	for i, c := range cells {
+		runes[i] = c.r
+	}
+
+	return runes
+}
+
+func (m TextArea) renderLine(cells []cell) string {
 	var b strings.Builder
 
 	if m.fade < 1 {
 		fs := animation.FadeStyle(m.fade)
-		for i := l.start; i < l.end; i++ {
-			b.WriteString(fs.Render(string(target[i])))
+		for _, c := range cells {
+			b.WriteString(fs.Render(string(c.r)))
 		}
 
 		return b.String()
 	}
 
-	for i := l.start; i < l.end; i++ {
-		b.WriteString(m.character(i))
+	for _, c := range cells {
+		b.WriteString(m.character(c))
 	}
 
 	return b.String()
 }
 
-func (m TextArea) character(index int) string {
-	target := m.test.Target[index]
-	caret := len(m.test.Typed)
+func (m TextArea) character(c cell) string {
+	s := string(c.r)
 
-	if index == caret {
-		m.cursor.SetChar(string(target))
+	switch c.state {
+	case caret:
+		m.cursor.SetChar(s)
 
 		return m.cursor.View()
+	case correct:
+		return m.styles.Correct.Render(s)
+	case incorrect:
+		return m.styles.Incorrect.Render(s)
+	default:
+		return m.styles.Untyped.Render(s)
 	}
-
-	if index > caret {
-		return m.styles.Untyped.Render(string(target))
-	}
-
-	if m.test.Typed[index] == target {
-		return m.styles.Correct.Render(string(target))
-	}
-
-	if target == ' ' {
-		target = '_'
-	}
-
-	return m.styles.Incorrect.Render(string(target))
 }
 
-// line is the range of Target runes [start, end) shown on one row.
+// line is the range of cells [start, end) shown on one row.
 type line struct {
 	start int
 	end   int
 }
 
-// wrapLines breaks target at word boundaries, measured in terminal columns.
+// wrapLines breaks text at word boundaries, measured in terminal columns.
 func wrapLines(target []rune, width int) []line {
 	var lines []line
 	start, col := 0, 0

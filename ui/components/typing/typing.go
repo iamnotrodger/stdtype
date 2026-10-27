@@ -162,13 +162,7 @@ func (m Model) renderProgress() string {
 		return animation.FadeRender(m.fade.Value, strconv.Itoa(max(remaining, 0)))
 	}
 
-	count := 0
-	typed := strings.TrimRight(string(m.test.Typed), " ")
-
-	if typed != "" {
-		count = strings.Count(typed, " ")
-	}
-
+	count := min(m.test.ActiveWord(), m.settings.WordCount)
 	progress := fmt.Sprintf("%d/%d", count, m.settings.WordCount)
 
 	return animation.FadeRender(m.fade.Value, progress)

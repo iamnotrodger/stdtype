@@ -47,6 +47,7 @@ type Stats struct {
 
 	CorrectChars   int `json:"correct_chars,omitempty"`
 	IncorrectChars int `json:"incorrect_chars,omitempty"`
+	ExtraChars     int `json:"extra_chars,omitempty"`
 	MissedChars    int `json:"missing_chars,omitempty"`
 
 	TypedChars        int `json:"typed_chars,omitempty"`
@@ -76,8 +77,8 @@ type Result struct {
 }
 
 type TypeTest struct {
-	Target []rune
-	Typed  []rune
+	Words  [][]rune
+	Inputs [][]rune
 	Mode   Mode
 
 	started    bool

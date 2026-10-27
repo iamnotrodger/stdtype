@@ -107,7 +107,10 @@ func (m Model) renderStats() string {
 	)
 
 	testType := fmt.Sprintf("%s %d", result.Mode, result.Amount)
-	chars := fmt.Sprintf("%d/%d/%d/", stats.CorrectChars, stats.IncorrectChars, stats.MissedChars)
+	chars := fmt.Sprintf(
+		"%d/%d/%d/%d",
+		stats.CorrectChars, stats.IncorrectChars, stats.ExtraChars, stats.MissedChars,
+	)
 
 	details := lipgloss.JoinHorizontal(lipgloss.Top,
 		stat("test type", testType), gap,

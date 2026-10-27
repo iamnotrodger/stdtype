@@ -20,7 +20,7 @@ func TestTextAreaUpdate(t *testing.T) {
 		name      string
 		target    string
 		modelFunc func(TextArea) TextArea
-		want      string
+		want      []string
 	}{
 		{
 			name:   "should append runes when typing",
@@ -28,7 +28,7 @@ func TestTextAreaUpdate(t *testing.T) {
 			modelFunc: func(m TextArea) TextArea {
 				return sendString(m, "ab")
 			},
-			want: "ab",
+			want: []string{"ab"},
 		},
 		{
 			name:   "should remove last rune when backspace pressed",
@@ -39,10 +39,10 @@ func TestTextAreaUpdate(t *testing.T) {
 
 				return m
 			},
-			want: "a",
+			want: []string{"a"},
 		},
 		{
-			name:   "should delete back to word start when delete word pressed",
+			name:   "should clear active word when delete word pressed when delete word pressed",
 			target: "ab cd",
 			modelFunc: func(m TextArea) TextArea {
 				m = sendString(m, "ab c")
@@ -50,7 +50,7 @@ func TestTextAreaUpdate(t *testing.T) {
 
 				return m
 			},
-			want: "ab ",
+			want: []string{"ab", ""},
 		},
 		{
 			name:   "should ignore keys when test finished",
@@ -61,7 +61,7 @@ func TestTextAreaUpdate(t *testing.T) {
 
 				return sendString(m, "b")
 			},
-			want: "a",
+			want: []string{"a"},
 		},
 	}
 
@@ -71,7 +71,12 @@ func TestTextAreaUpdate(t *testing.T) {
 
 			m := tt.modelFunc(newTextArea(tt.target, 10, 3))
 
-			assert.Equal(t, tt.want, string(m.test.Typed))
+			got := make([]string, len(m.test.Inputs))
+			for i, in := range m.test.Inputs {
+				got[i] = string(in)
+			}
+
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -183,14 +188,39 @@ func TestTextAreaView(t *testing.T) {
 			}},
 		},
 		{
-			name:   "should render underscore when space mistyped",
+			name:   "should render extra letters after the word when typed past its end",
 			target: "a b",
 			width:  10, height: 3,
 			modelFunc: func(m TextArea) TextArea {
 				return sendString(m, "ax")
 			},
+			want: want{
+				lines: []string{"ax b      ", "", ""},
+				contains: func(s TextAreaStyles) string {
+					return s.Correct.Render("a") + s.Incorrect.Render("x")
+				},
+			},
+		},
+		{
+			name:   "should style skipped letters as incorrect when word committed early",
+			target: "abc d",
+			width:  10, height: 3,
+			modelFunc: func(m TextArea) TextArea {
+				return sendString(m, "a ")
+			},
 			want: want{contains: func(s TextAreaStyles) string {
-				return s.Incorrect.Render("_")
+				return s.Correct.Render("a") + s.Incorrect.Render("b") + s.Incorrect.Render("c")
+			}},
+		},
+		{
+			name:   "should draw cursor after the last word when typed past its end",
+			target: "ab",
+			width:  10, height: 3,
+			modelFunc: func(m TextArea) TextArea {
+				return sendString(m, "abx")
+			},
+			want: want{contains: func(s TextAreaStyles) string {
+				return s.Incorrect.Render("x") + s.Cursor.Inline(true).Reverse(true).Render(" ")
 			}},
 		},
 		{
