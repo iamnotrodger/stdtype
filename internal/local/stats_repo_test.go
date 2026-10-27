@@ -29,7 +29,7 @@ func TestStatsRepo(t *testing.T) {
 		require.NoError(t, err)
 
 		want := &stdtype.Result{
-			Timestamp: time.Unix(100, 0),
+			Timestamp: time.Unix(100, 0).UTC(),
 			Mode:      stdtype.WordsMode.String(),
 			Amount:    30,
 			Stats: stdtype.Stats{
@@ -58,7 +58,7 @@ func TestStatsRepo(t *testing.T) {
 
 		want := []*stdtype.Result{
 			{
-				Timestamp: time.Unix(100, 0),
+				Timestamp: time.Unix(100, 0).UTC(),
 				Mode:      stdtype.WordsMode.String(),
 				Amount:    30,
 				Stats: stdtype.Stats{
@@ -67,7 +67,7 @@ func TestStatsRepo(t *testing.T) {
 				},
 			},
 			{
-				Timestamp: time.Unix(200, 0),
+				Timestamp: time.Unix(200, 0).UTC(),
 				Mode:      stdtype.TimeMode.String(),
 				Amount:    30,
 				Stats: stdtype.Stats{
