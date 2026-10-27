@@ -13,10 +13,12 @@ const (
 type SettingField string
 
 const (
-	SettingMode      SettingField = "MODE"
-	SettingDuration  SettingField = "DURATION"
-	SettingWordCount SettingField = "WORDS"
-	SettingList      SettingField = "LIST"
+	SettingMode        SettingField = "MODE"
+	SettingDuration    SettingField = "DURATION"
+	SettingWordCount   SettingField = "WORDS"
+	SettingList        SettingField = "LIST"
+	SettingPunctuation SettingField = "PUNCTUATION"
+	SettingNumbers     SettingField = "NUMBERS"
 )
 
 func (m Mode) String() string {

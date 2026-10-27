@@ -250,6 +250,16 @@ func TestSettings(t *testing.T) {
 			msg:  settingsMsg{field: stdtype.SettingList, value: "spanish"},
 			want: stdtype.Settings{Mode: "words", WordCount: 25, Duration: 30, WordList: "spanish"},
 		},
+		{
+			name: "should enable punctuation when punctuation turned on",
+			msg:  settingsMsg{field: stdtype.SettingPunctuation, value: true},
+			want: stdtype.Settings{Mode: "words", WordCount: 25, Duration: 30, WordList: "english", Punctuation: true},
+		},
+		{
+			name: "should enable numbers when numbers turned on",
+			msg:  settingsMsg{field: stdtype.SettingNumbers, value: true},
+			want: stdtype.Settings{Mode: "words", WordCount: 25, Duration: 30, WordList: "english", Numbers: true},
+		},
 	}
 
 	for _, tt := range tests {

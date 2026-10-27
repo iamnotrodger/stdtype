@@ -259,6 +259,18 @@ func (m Model) onSettings(msg settingsMsg) (tea.Model, tea.Cmd) {
 		}
 		m.settings.Mode = stdtype.WordsMode.String()
 		m.settings.WordCount = value
+	case stdtype.SettingPunctuation:
+		value, ok := msg.value.(bool)
+		if !ok {
+			return m, nil
+		}
+		m.settings.Punctuation = value
+	case stdtype.SettingNumbers:
+		value, ok := msg.value.(bool)
+		if !ok {
+			return m, nil
+		}
+		m.settings.Numbers = value
 	}
 
 	err := m.settingsRepo.UpdateSettings(*m.settings)

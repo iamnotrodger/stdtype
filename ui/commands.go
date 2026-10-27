@@ -54,6 +54,14 @@ func BuildCommands(theme theme.Theme, languages []string) []commandpalette.Comma
 			Label:       settingStye.Render("󰗊  language"),
 			Subcommands: buildSettingsCommand(settingStye, stdtype.SettingList, languages),
 		},
+		{
+			Label:       settingStye.Render("  punctuation"),
+			Subcommands: buildToggleCommand(settingStye, stdtype.SettingPunctuation),
+		},
+		{
+			Label:       settingStye.Render("  numbers"),
+			Subcommands: buildToggleCommand(settingStye, stdtype.SettingNumbers),
+		},
 	}
 }
 
@@ -77,6 +85,19 @@ func buildSettingsCommand[T any](
 	}
 
 	return commands
+}
+
+func buildToggleCommand(style lipgloss.Style, field stdtype.SettingField) []commandpalette.Command {
+	return []commandpalette.Command{
+		{
+			Label: style.Render("on"),
+			Run:   func() tea.Msg { return settingsMsg{field: field, value: true} },
+		},
+		{
+			Label: style.Render("off"),
+			Run:   func() tea.Msg { return settingsMsg{field: field, value: false} },
+		},
+	}
 }
 
 func commandSettingsMode(style lipgloss.Style) []commandpalette.Command {
