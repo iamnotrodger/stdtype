@@ -259,10 +259,9 @@ func ComputeStats(t *TypeTest) Stats {
 	}
 }
 
-// Consistency scores stead-state raw-WPM samples as 100*(1-stddev/mean),
-// clampled to [0, 100].
+// Consistency maps the coefficient of variation of raw samples onto [0, 100].
 func Consistency(rawSamples []float64) float64 {
-	if len(rawSamples) < 2 {
+	if len(rawSamples) == 0 {
 		return 0
 	}
 
@@ -283,9 +282,16 @@ func Consistency(rawSamples []float64) float64 {
 	}
 
 	stdDev := math.Sqrt(sumSquaredDiff / float64(len(rawSamples)))
-	score := 100.0 * (1.0 - stdDev/mean)
 
-	return math.Max(0, math.Min(100, score))
+	return kogasa(stdDev / mean)
+}
+
+// kogasa is a tanh curve that stays close to 100*(1-cov) for small cov but
+// never drops below 0.
+func kogasa(cov float64) float64 {
+	cov3 := cov * cov * cov
+
+	return 100 * (1 - math.Tanh(cov+cov3/3+cov3*cov*cov/5))
 }
 
 func IsAFK(afkSeconds, totalSeconds int) bool {

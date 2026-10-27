@@ -456,9 +456,22 @@ func TestConsistency(t *testing.T) {
 		assert.Less(t, consistency, 100.0)
 	})
 
-	t.Run("should score by coefficienty of variation", func(t *testing.T) {
+	t.Run("should score close to 100*(1-cov) when variation is small", func(t *testing.T) {
 		consistency := Consistency([]float64{40, 60})
-		assert.InDelta(t, 80.0, consistency, 1e-6)
+		assert.InDelta(t, 80.0, consistency, 0.001)
+	})
+
+	t.Run("should stay above 0 when variation exceeds the mean", func(t *testing.T) {
+		consistency := Consistency([]float64{0, 0, 0, 100})
+		assert.Greater(t, consistency, 0.0)
+	})
+
+	t.Run("should score a single sample as 100", func(t *testing.T) {
+		assert.InDelta(t, 100.0, Consistency([]float64{40}), 1e-6)
+	})
+
+	t.Run("should score no samples as 0", func(t *testing.T) {
+		assert.InDelta(t, 0.0, Consistency(nil), 1e-6)
 	})
 }
 

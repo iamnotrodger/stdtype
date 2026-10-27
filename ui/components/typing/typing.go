@@ -243,15 +243,14 @@ func (m Model) recordSample() Model {
 	secs := (elapsed - m.prevElapsed).Seconds()
 	stats := stdtype.ComputeStats(m.test)
 
-	rawDelta := max(0, stats.TypedChars-m.prevStats.TypedChars)
-	netDelta := max(0, stats.CorrectChars-m.prevStats.CorrectChars)
+	rawDelta := stats.Keystrokes - m.prevStats.Keystrokes
 
 	errKeys := stats.Keystrokes - stats.CorrectKeystrokes
 	prevErrKeys := m.prevStats.Keystrokes - m.prevStats.CorrectKeystrokes
 	errDelta := max(0, errKeys-prevErrKeys)
 
 	m.samples.Raw = append(m.samples.Raw, wpm(rawDelta, secs))
-	m.samples.WPM = append(m.samples.WPM, wpm(netDelta, secs))
+	m.samples.WPM = append(m.samples.WPM, stats.WPM)
 	m.samples.Err = append(m.samples.Err, errDelta)
 
 	m.prevStats = stats

@@ -55,7 +55,7 @@ type Stats struct {
 	CorrectKeystrokes int `json:"correct_keystrokes,omitempty"`
 }
 
-// Per-second WPM samples (chars/5 per 1/60 min).
+// Samples are taken once per second.
 type Samples struct {
 	WPM []float64 `json:"wpm,omitempty"`
 	Raw []float64 `json:"raw,omitempty"`
