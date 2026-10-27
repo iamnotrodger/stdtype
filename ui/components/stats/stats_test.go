@@ -1,13 +1,14 @@
 package stats
 
 import (
-	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	stdtype "github.com/iamnotrodger/stdytype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSelect(t *testing.T) {
@@ -24,18 +25,9 @@ func TestSelect(t *testing.T) {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 
 		_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-		if cmd == nil {
-			t.Fatal("cmd = nil, want ResultMsg")
-		}
 
-		msg, ok := cmd().(ResultMsg)
-		if !ok {
-			t.Fatalf("cmd msg = %T, want ResultMsg", cmd())
-		}
-
-		if msg.Result != second {
-			t.Errorf("result = %+v, want second result", msg.Result)
-		}
+		require.NotNil(t, cmd)
+		assert.Equal(t, ResultMsg{Result: second}, cmd())
 	})
 
 	t.Run("should do nothing when enter pressed with no results", func(t *testing.T) {
@@ -46,9 +38,7 @@ func TestSelect(t *testing.T) {
 
 		_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
-		if cmd != nil {
-			t.Errorf("cmd msg = %T, want no cmd", cmd())
-		}
+		assert.Nil(t, cmd)
 	})
 }
 
@@ -99,9 +89,7 @@ func TestModelView(t *testing.T) {
 			view := ansi.Strip(m.View())
 
 			for _, want := range tt.wantShown {
-				if !strings.Contains(view, want) {
-					t.Errorf("view does not show %q:\n%s", want, view)
-				}
+				assert.Contains(t, view, want)
 			}
 		})
 	}
@@ -148,9 +136,7 @@ func TestSummarize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := summarize(tt.results); got != tt.want {
-				t.Errorf("summarize() = %+v, want %+v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, summarize(tt.results))
 		})
 	}
 }
