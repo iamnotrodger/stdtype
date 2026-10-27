@@ -3,6 +3,7 @@ package ui
 import (
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
+	commandpalette "github.com/iamnotrodger/stdytype/ui/components/commadpalette"
 	"github.com/iamnotrodger/stdytype/ui/components/result"
 	"github.com/iamnotrodger/stdytype/ui/components/stats"
 	"github.com/iamnotrodger/stdytype/ui/components/typing"
@@ -57,5 +58,19 @@ func statsStyles(t theme.Theme) stats.Styles {
 		Value:  lipgloss.NewStyle().Foreground(t.Primary).Bold(true),
 		Footer: lipgloss.NewStyle().Foreground(t.Faint),
 		Table:  tbl,
+	}
+}
+
+func paletteStyles(t theme.Theme) commandpalette.Styles {
+	faint := lipgloss.NewStyle().Foreground(t.Faint)
+
+	return commandpalette.Styles{
+		Box: lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.Faint).
+			Padding(1, 2),
+		Divider: faint,
+		Empty:   faint,
+		Item:    lipgloss.NewStyle().Foreground(t.Primary),
 	}
 }

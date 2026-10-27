@@ -62,12 +62,13 @@ func NewModel(
 		typing:     typing.NewModel(wordSource, &settings),
 		result:     result.NewModel(),
 		stats:      stats.NewModel(),
-		palette:    commandpalette.NewModel(*appCtx, BuildCommands(*theme.Default, wordSource.Lists())),
+		palette:    commandpalette.NewModel(BuildCommands(*theme.Default, wordSource.Lists())),
 	}
 
 	m.typing.SetStyle(typingStyles(appCtx.Theme))
 	m.result.SetStyle(resultStyles(appCtx.Theme))
 	m.stats.SetStyle(statsStyles(appCtx.Theme))
+	m.palette.SetStyle(paletteStyles(appCtx.Theme))
 
 	return m
 }
