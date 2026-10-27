@@ -12,7 +12,6 @@ import (
 	"github.com/iamnotrodger/stdytype/ui/components/result"
 	"github.com/iamnotrodger/stdytype/ui/components/stats"
 	"github.com/iamnotrodger/stdytype/ui/components/typing"
-	appctx "github.com/iamnotrodger/stdytype/ui/context"
 	"github.com/iamnotrodger/stdytype/ui/keys"
 	"github.com/iamnotrodger/stdytype/ui/theme"
 )
@@ -26,7 +25,6 @@ const (
 )
 
 type Model struct {
-	appCtx     *appctx.Context
 	wordSource stdtype.WordSource
 	statsRepo  stdtype.StatsRepo
 
@@ -48,13 +46,7 @@ func NewModel(
 	statsRepo stdtype.StatsRepo,
 	settings stdtype.Settings,
 ) Model {
-	appCtx := &appctx.Context{
-		Theme:      *theme.Default,
-		ColorStyle: theme.NewTextStyle(*theme.Default),
-	}
-
 	m := Model{
-		appCtx:     appCtx,
 		wordSource: wordSource,
 		statsRepo:  statsRepo,
 		settings:   &settings,
@@ -65,10 +57,10 @@ func NewModel(
 		palette:    commandpalette.NewModel(BuildCommands(*theme.Default, wordSource.Lists())),
 	}
 
-	m.typing.SetStyle(typingStyles(appCtx.Theme))
-	m.result.SetStyle(resultStyles(appCtx.Theme))
-	m.stats.SetStyle(statsStyles(appCtx.Theme))
-	m.palette.SetStyle(paletteStyles(appCtx.Theme))
+	m.typing.SetStyle(typingStyles(*theme.Default))
+	m.result.SetStyle(resultStyles(*theme.Default))
+	m.stats.SetStyle(statsStyles(*theme.Default))
+	m.palette.SetStyle(paletteStyles(*theme.Default))
 
 	return m
 }
