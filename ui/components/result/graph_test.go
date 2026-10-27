@@ -1,11 +1,11 @@
 package result
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
 	stdtype "github.com/iamnotrodger/stdytype"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGraphView(t *testing.T) {
@@ -66,20 +66,16 @@ func TestGraphView(t *testing.T) {
 
 			view := ansi.Strip(g.View())
 
-			if tt.wantEmpty && view != "" {
-				t.Errorf("view = %q, want empty", view)
+			if tt.wantEmpty {
+				assert.Empty(t, view)
 			}
 
 			for _, want := range tt.wantShown {
-				if !strings.Contains(view, want) {
-					t.Errorf("view does not show %q:\n%s", want, view)
-				}
+				assert.Contains(t, view, want)
 			}
 
 			for _, missing := range tt.wantMissing {
-				if strings.Contains(view, missing) {
-					t.Errorf("view shows %q:\n%s", missing, view)
-				}
+				assert.NotContains(t, view, missing)
 			}
 		})
 	}
