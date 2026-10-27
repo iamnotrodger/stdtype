@@ -1,7 +1,6 @@
 package typing
 
 import (
-	"slices"
 	"strings"
 	"testing"
 
@@ -10,6 +9,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTextAreaUpdate(t *testing.T) {
@@ -70,24 +71,18 @@ func TestTextAreaUpdate(t *testing.T) {
 
 			m := tt.modelFunc(newTextArea(tt.target, 10, 3))
 
-			if got := string(m.test.Typed); got != tt.want {
-				t.Errorf("typed = %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, string(m.test.Typed))
 		})
 	}
 }
 
 func TestCursorStopsBlinkingWhenTestStarts(t *testing.T) {
 	m := newTextArea("ab", 10, 3)
-	if m.cursor.Mode() != cursor.CursorBlink {
-		t.Fatalf("cursor mode = %v before typing, want blink", m.cursor.Mode())
-	}
+	require.Equal(t, cursor.CursorBlink, m.cursor.Mode())
 
 	m = sendString(m, "a")
 
-	if m.cursor.Mode() != cursor.CursorStatic {
-		t.Errorf("cursor mode = %v after typing, want static", m.cursor.Mode())
-	}
+	assert.Equal(t, cursor.CursorStatic, m.cursor.Mode())
 }
 
 func TestTextAreaView(t *testing.T) {
@@ -225,17 +220,11 @@ func TestTextAreaView(t *testing.T) {
 			view := m.View()
 
 			if tt.want.lines != nil {
-				got := strings.Split(ansi.Strip(view), "\n")
-				if !slices.Equal(got, tt.want.lines) {
-					t.Errorf("view lines = %q, want %q", got, tt.want.lines)
-				}
+				assert.Equal(t, tt.want.lines, strings.Split(ansi.Strip(view), "\n"))
 			}
 
 			if tt.want.contains != nil {
-				frag := tt.want.contains(m.Styles())
-				if !strings.Contains(view, frag) {
-					t.Errorf("view %q does not contain %q", view, frag)
-				}
+				assert.Contains(t, view, tt.want.contains(m.Styles()))
 			}
 		})
 	}

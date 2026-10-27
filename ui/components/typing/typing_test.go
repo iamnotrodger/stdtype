@@ -1,12 +1,13 @@
 package typing
 
 import (
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	stdtype "github.com/iamnotrodger/stdytype"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFinish(t *testing.T) {
@@ -20,14 +21,12 @@ func TestFinish(t *testing.T) {
 
 		_, cmd := typeString(m, "ab cd")
 
-		msg, ok := runCmd(cmd).(ResultMsg)
-		if !ok {
-			t.Fatalf("cmd msg = %T, want ResultMsg", runCmd(cmd))
-		}
+		msg := runCmd(cmd)
+		require.IsType(t, ResultMsg{}, msg)
 
-		if msg.Result.Mode != "words" || msg.Result.Amount != 2 {
-			t.Errorf("result mode/amount = %s/%d, want words/2", msg.Result.Mode, msg.Result.Amount)
-		}
+		result := msg.(ResultMsg).Result
+		assert.Equal(t, "words", result.Mode)
+		assert.Equal(t, 2, result.Amount)
 	})
 
 	t.Run("should not finish again when keys arrive after test finished", func(t *testing.T) {
@@ -39,9 +38,7 @@ func TestFinish(t *testing.T) {
 
 		_, cmd := typeString(m, "x")
 
-		if cmd != nil {
-			t.Errorf("cmd msg = %T, want no cmd", runCmd(cmd))
-		}
+		assert.Nil(t, cmd)
 	})
 
 	t.Run("should send ResultMsg on tick when duration elapsed in time mode", func(t *testing.T) {
@@ -55,9 +52,7 @@ func TestFinish(t *testing.T) {
 
 		_, cmd := m.Update(TickMsg{ID: m.tickID})
 
-		if _, ok := runCmd(cmd).(ResultMsg); !ok {
-			t.Errorf("cmd msg = %T, want ResultMsg", runCmd(cmd))
-		}
+		assert.IsType(t, ResultMsg{}, runCmd(cmd))
 	})
 }
 
@@ -125,13 +120,8 @@ func TestTick(t *testing.T) {
 
 			m, cmd := m.Update(msg)
 
-			if ticking := cmd != nil; ticking != tt.wantTicking {
-				t.Errorf("ticking = %v, want %v", ticking, tt.wantTicking)
-			}
-
-			if got := len(m.samples.WPM); got != tt.wantSamples {
-				t.Errorf("samples = %d, want %d", got, tt.wantSamples)
-			}
+			assert.Equal(t, tt.wantTicking, cmd != nil, "ticking")
+			assert.Len(t, m.samples.WPM, tt.wantSamples)
 		})
 	}
 }
@@ -147,9 +137,7 @@ func TestTickChainStart(t *testing.T) {
 
 		_, cmd := typeString(m, "a")
 
-		if cmd == nil {
-			t.Error("cmd = nil, want tick")
-		}
+		assert.NotNil(t, cmd)
 	})
 
 	t.Run("should not start another chain when later keys typed", func(t *testing.T) {
@@ -161,9 +149,7 @@ func TestTickChainStart(t *testing.T) {
 
 		_, cmd := typeString(m, "b")
 
-		if cmd != nil {
-			t.Error("cmd != nil, want no new tick chain")
-		}
+		assert.Nil(t, cmd)
 	})
 }
 
@@ -200,9 +186,7 @@ func TestModelView(t *testing.T) {
 			view := ansi.Strip(m.View())
 
 			for _, want := range tt.wantShown {
-				if !strings.Contains(view, want) {
-					t.Errorf("view does not show %q:\n%s", want, view)
-				}
+				assert.Contains(t, view, want)
 			}
 		})
 	}
