@@ -5,8 +5,8 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
-	"github.com/iamnotrodger/stdytype/ui/keys"
-	"github.com/iamnotrodger/stdytype/ui/theme"
+	"github.com/iamnotrodger/stdtype/ui/keys"
+	"github.com/iamnotrodger/stdtype/ui/theme"
 )
 
 type Layout struct {

@@ -3,11 +3,11 @@ package ui
 import (
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
-	commandpalette "github.com/iamnotrodger/stdytype/ui/components/commadpalette"
-	"github.com/iamnotrodger/stdytype/ui/components/result"
-	"github.com/iamnotrodger/stdytype/ui/components/stats"
-	"github.com/iamnotrodger/stdytype/ui/components/typing"
-	"github.com/iamnotrodger/stdytype/ui/theme"
+	commandpalette "github.com/iamnotrodger/stdtype/ui/components/commadpalette"
+	"github.com/iamnotrodger/stdtype/ui/components/result"
+	"github.com/iamnotrodger/stdtype/ui/components/stats"
+	"github.com/iamnotrodger/stdtype/ui/components/typing"
+	"github.com/iamnotrodger/stdtype/ui/theme"
 )
 
 func typingStyles(t theme.Theme) typing.Styles {

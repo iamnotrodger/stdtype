@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/common"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/common"
 )
 
 const graphHeight = 10

@@ -7,8 +7,8 @@ import (
 	"charm.land/bubbles/v2/cursor"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/animation"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/animation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

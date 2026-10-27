@@ -11,7 +11,7 @@ import (
 	"github.com/NimbleMarkets/ntcharts/v2/canvas/runes"
 	"github.com/NimbleMarkets/ntcharts/v2/linechart"
 	"github.com/NimbleMarkets/ntcharts/v2/linechart/timeserieslinechart"
-	stdtype "github.com/iamnotrodger/stdytype"
+	stdtype "github.com/iamnotrodger/stdtype"
 )
 
 const (

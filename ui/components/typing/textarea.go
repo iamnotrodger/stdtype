@@ -8,8 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/animation"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/animation"
 )
 
 type KeyMap struct {

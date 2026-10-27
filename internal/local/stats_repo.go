@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	stdtype "github.com/iamnotrodger/stdytype"
+	stdtype "github.com/iamnotrodger/stdtype"
 	"github.com/pkg/errors"
 )
 

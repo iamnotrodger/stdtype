@@ -11,9 +11,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/iamnotrodger/stdytype/internal/local"
-	"github.com/iamnotrodger/stdytype/internal/words"
-	"github.com/iamnotrodger/stdytype/ui"
+	"github.com/iamnotrodger/stdtype/internal/local"
+	"github.com/iamnotrodger/stdtype/internal/words"
+	"github.com/iamnotrodger/stdtype/ui"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

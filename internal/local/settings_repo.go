@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/go-viper/mapstructure/v2"
-	stdtype "github.com/iamnotrodger/stdytype"
+	stdtype "github.com/iamnotrodger/stdtype"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )

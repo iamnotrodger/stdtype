@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
-	stdtype "github.com/iamnotrodger/stdytype"
+	stdtype "github.com/iamnotrodger/stdtype"
 	"github.com/stretchr/testify/assert"
 )
 

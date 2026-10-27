@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	stdtype "github.com/iamnotrodger/stdytype"
+	stdtype "github.com/iamnotrodger/stdtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	stdtype "github.com/iamnotrodger/stdytype"
+	stdtype "github.com/iamnotrodger/stdtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

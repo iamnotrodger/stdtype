@@ -10,8 +10,8 @@ import (
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/common"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/common"
 )
 
 // ResultMsg is sent when a result is selected.

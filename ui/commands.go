@@ -5,10 +5,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/common"
-	commandpalette "github.com/iamnotrodger/stdytype/ui/components/commadpalette"
-	"github.com/iamnotrodger/stdytype/ui/theme"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/common"
+	commandpalette "github.com/iamnotrodger/stdtype/ui/components/commadpalette"
+	"github.com/iamnotrodger/stdtype/ui/theme"
 )
 
 type (

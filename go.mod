@@ -1,4 +1,4 @@
-module github.com/iamnotrodger/stdytype
+module github.com/iamnotrodger/stdtype
 
 go 1.27.1
 

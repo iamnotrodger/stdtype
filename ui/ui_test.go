@@ -6,9 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	stdtype "github.com/iamnotrodger/stdytype"
-	commandpalette "github.com/iamnotrodger/stdytype/ui/components/commadpalette"
-	"github.com/iamnotrodger/stdytype/ui/components/stats"
+	stdtype "github.com/iamnotrodger/stdtype"
+	commandpalette "github.com/iamnotrodger/stdtype/ui/components/commadpalette"
+	"github.com/iamnotrodger/stdtype/ui/components/stats"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

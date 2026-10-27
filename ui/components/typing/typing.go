@@ -9,9 +9,9 @@ import (
 	"charm.land/bubbles/v2/cursor"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/animation"
-	"github.com/iamnotrodger/stdytype/ui/common"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/animation"
+	"github.com/iamnotrodger/stdtype/ui/common"
 )
 
 type TickMsg struct {

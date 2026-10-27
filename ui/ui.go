@@ -7,14 +7,14 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/pkg/errors"
 
-	stdtype "github.com/iamnotrodger/stdytype"
-	"github.com/iamnotrodger/stdytype/ui/animation"
-	commandpalette "github.com/iamnotrodger/stdytype/ui/components/commadpalette"
-	"github.com/iamnotrodger/stdytype/ui/components/result"
-	"github.com/iamnotrodger/stdytype/ui/components/stats"
-	"github.com/iamnotrodger/stdytype/ui/components/typing"
-	"github.com/iamnotrodger/stdytype/ui/keys"
-	"github.com/iamnotrodger/stdytype/ui/theme"
+	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/animation"
+	commandpalette "github.com/iamnotrodger/stdtype/ui/components/commadpalette"
+	"github.com/iamnotrodger/stdtype/ui/components/result"
+	"github.com/iamnotrodger/stdtype/ui/components/stats"
+	"github.com/iamnotrodger/stdtype/ui/components/typing"
+	"github.com/iamnotrodger/stdtype/ui/keys"
+	"github.com/iamnotrodger/stdtype/ui/theme"
 )
 
 type screen int
