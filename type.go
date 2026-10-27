@@ -9,7 +9,6 @@ import (
 const (
 	AFKThreshold  = 0.5
 	MinAFKSeconds = 7
-
 	MaxExtraChars = 20
 )
 

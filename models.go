@@ -69,7 +69,6 @@ type Samples struct {
 	Err []int     `json:"err,omitempty"`
 }
 
-// Result is a persisted record of one complete test.
 type Result struct {
 	Timestamp   time.Time `json:"timestamp"`
 	Mode        string    `json:"mode"`
