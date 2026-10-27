@@ -171,7 +171,7 @@ func TestModelView(t *testing.T) {
 		{
 			name:      "should show remaining seconds when in time mode",
 			settings:  stdtype.Settings{Mode: "time", Duration: 30},
-			wantShown: []string{"30", "time words | 15 20 60 120"},
+			wantShown: []string{"30", "time words | 15 30 60 120"},
 		},
 	}
 
