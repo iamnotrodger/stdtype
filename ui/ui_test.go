@@ -13,6 +13,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewModel(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should load settings from repo when created", func(t *testing.T) {
+		t.Parallel()
+
+		settings := stdtype.Settings{Mode: "time", Duration: 60}
+
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, &fakeSettingsRepo{settings: settings})
+
+		require.NoError(t, err)
+		assert.Equal(t, settings, *m.settings)
+	})
+
+	t.Run("should fail when settings cannot be loaded", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, &fakeSettingsRepo{err: errDiskFull})
+
+		assert.ErrorIs(t, err, errDiskFull)
+	})
+}
+
 func TestFinishTest(t *testing.T) {
 	t.Parallel()
 
@@ -20,7 +43,9 @@ func TestFinishTest(t *testing.T) {
 		t.Parallel()
 
 		repo := &fakeStatsRepo{}
-		m := NewModel(fixedWords{"ab", "cd"}, repo, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
+		require.NoError(t, err)
 
 		m, cmd := typeString(m, "ab cd")
 		require.NotNil(t, cmd)
@@ -34,7 +59,9 @@ func TestFinishTest(t *testing.T) {
 		t.Parallel()
 
 		repo := &fakeStatsRepo{}
-		m := NewModel(fixedWords{"ab", "cd"}, repo, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
+		require.NoError(t, err)
 		m.screen = screenStats
 
 		m, _ = update(m, stats.ResultMsg{Result: &stdtype.Result{Mode: "words", Amount: 2}})
@@ -50,7 +77,9 @@ func TestKeys(t *testing.T) {
 	t.Run("should quit when ctrl+c pressed", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 
 		_, cmd := update(m, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 
@@ -61,7 +90,9 @@ func TestKeys(t *testing.T) {
 	t.Run("should return to typing and close palette when tab pressed", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 		m.screen = screenResult
 		m.paletteOpen = true
 
@@ -74,7 +105,9 @@ func TestKeys(t *testing.T) {
 	t.Run("should ignore keys when on result screen", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 		m.screen = screenResult
 
 		m, cmd := update(m, keyPress('a'))
@@ -90,7 +123,9 @@ func TestPalette(t *testing.T) {
 	t.Run("should toggle palette when esc pressed", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 
 		m, _ = update(m, tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.True(t, m.paletteOpen)
@@ -102,7 +137,9 @@ func TestPalette(t *testing.T) {
 	t.Run("should send keys to palette instead of typing when palette open", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 		m, _ = update(m, tea.KeyPressMsg{Code: tea.KeyEscape})
 
 		m, _ = typeString(m, "ab")
@@ -113,7 +150,9 @@ func TestPalette(t *testing.T) {
 	t.Run("should close palette and run command when command chosen", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 		m.paletteOpen = true
 
 		m, cmd := update(m, commandpalette.CommandMsg{
@@ -128,7 +167,9 @@ func TestPalette(t *testing.T) {
 	t.Run("should show stats when stats command chosen from palette", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 		m, _ = update(m, tea.KeyPressMsg{Code: tea.KeyEscape})
 		m, _ = typeString(m, "stats")
 
@@ -153,7 +194,9 @@ func TestNavigate(t *testing.T) {
 		repo := &fakeStatsRepo{results: []*stdtype.Result{
 			{Mode: "words", Amount: 25, Stats: stdtype.Stats{WPM: 87}},
 		}}
-		m := NewModel(fixedWords{"ab", "cd"}, repo, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
+		require.NoError(t, err)
 		m, _ = update(m, tea.WindowSizeMsg{Width: 100, Height: 40})
 
 		m, _ = update(m, navMsg{screen: screenStats})
@@ -166,7 +209,9 @@ func TestNavigate(t *testing.T) {
 		t.Parallel()
 
 		repo := &fakeStatsRepo{err: errDiskFull}
-		m := NewModel(fixedWords{"ab", "cd"}, repo, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
+		require.NoError(t, err)
 
 		m, cmd := update(m, navMsg{screen: screenStats})
 
@@ -205,29 +250,53 @@ func TestSettings(t *testing.T) {
 			msg:  settingsMsg{field: stdtype.SettingList, value: "spanish"},
 			want: stdtype.Settings{Mode: "words", WordCount: 25, Duration: 30, WordList: "spanish"},
 		},
-		{
-			name: "should keep settings when value has wrong type",
-			msg:  settingsMsg{field: stdtype.SettingDuration, value: "60"},
-			want: initial,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, initial)
+			settingsRepo := &fakeSettingsRepo{settings: initial}
+			m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+			require.NoError(t, err)
 
 			m, _ = update(m, tt.msg)
 
 			assert.Equal(t, tt.want, *m.settings)
+			assert.Equal(t, []stdtype.Settings{tt.want}, settingsRepo.saved)
 		})
 	}
+
+	t.Run("should keep and not save settings when value has wrong type", func(t *testing.T) {
+		t.Parallel()
+
+		settingsRepo := &fakeSettingsRepo{settings: initial}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
+
+		m, _ = update(m, settingsMsg{field: stdtype.SettingDuration, value: "60"})
+
+		assert.Equal(t, initial, *m.settings)
+		assert.Empty(t, settingsRepo.saved)
+	})
+
+	t.Run("should apply settings when save fails", func(t *testing.T) {
+		t.Parallel()
+
+		settingsRepo := &fakeSettingsRepo{settings: initial, saveErr: errDiskFull}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
+
+		m, _ = update(m, settingsMsg{field: stdtype.SettingWordCount, value: 50})
+
+		assert.Equal(t, 50, m.settings.WordCount)
+	})
 
 	t.Run("should restart on typing screen when setting changed", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, initial)
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, &fakeSettingsRepo{settings: initial})
+		require.NoError(t, err)
 		m.screen = screenResult
 
 		m, _ = update(m, settingsMsg{field: stdtype.SettingWordCount, value: 50})
@@ -242,7 +311,9 @@ func TestView(t *testing.T) {
 	t.Run("should draw palette over screen when palette open", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 		m, _ = update(m, tea.WindowSizeMsg{Width: 100, Height: 40})
 		assert.NotContains(t, ansi.Strip(m.View().Content), "restart")
 
@@ -254,7 +325,9 @@ func TestView(t *testing.T) {
 	t.Run("should render before window size known", func(t *testing.T) {
 		t.Parallel()
 
-		m := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, stdtype.Settings{Mode: "words", WordCount: 2})
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, &fakeStatsRepo{}, settingsRepo)
+		require.NoError(t, err)
 
 		assert.NotPanics(t, func() { m.View() })
 	})
@@ -285,6 +358,23 @@ func (r *fakeStatsRepo) CreateResult(result *stdtype.Result) error {
 	r.results = append(r.results, result)
 
 	return r.err
+}
+
+type fakeSettingsRepo struct {
+	settings stdtype.Settings
+	saved    []stdtype.Settings
+	err      error
+	saveErr  error
+}
+
+func (r *fakeSettingsRepo) GetSettings() (stdtype.Settings, error) {
+	return r.settings, r.err
+}
+
+func (r *fakeSettingsRepo) UpdateSettings(settings stdtype.Settings) error {
+	r.saved = append(r.saved, settings)
+
+	return r.saveErr
 }
 
 // update unwraps tea.Model so tests can inspect the next state.

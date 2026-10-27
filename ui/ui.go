@@ -5,6 +5,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/pkg/errors"
 
 	stdtype "github.com/iamnotrodger/stdytype"
 	"github.com/iamnotrodger/stdytype/ui/animation"
@@ -25,8 +26,9 @@ const (
 )
 
 type Model struct {
-	wordSource stdtype.WordSource
-	statsRepo  stdtype.StatsRepo
+	wordSource   stdtype.WordSource
+	statsRepo    stdtype.StatsRepo
+	settingsRepo stdtype.SettingsRepo
 
 	settings *stdtype.Settings
 
@@ -44,17 +46,23 @@ type Model struct {
 func NewModel(
 	wordSource stdtype.WordSource,
 	statsRepo stdtype.StatsRepo,
-	settings stdtype.Settings,
-) Model {
+	settingsRepo stdtype.SettingsRepo,
+) (Model, error) {
+	settings, err := settingsRepo.GetSettings()
+	if err != nil {
+		return Model{}, errors.Wrap(err, "settingsRepo.GetSettings")
+	}
+
 	m := Model{
-		wordSource: wordSource,
-		statsRepo:  statsRepo,
-		settings:   &settings,
-		screen:     screenTyping,
-		typing:     typing.NewModel(wordSource, &settings),
-		result:     result.NewModel(),
-		stats:      stats.NewModel(),
-		palette:    commandpalette.NewModel(BuildCommands(*theme.Default, wordSource.Lists())),
+		wordSource:   wordSource,
+		statsRepo:    statsRepo,
+		settingsRepo: settingsRepo,
+		settings:     &settings,
+		screen:       screenTyping,
+		typing:       typing.NewModel(wordSource, &settings),
+		result:       result.NewModel(),
+		stats:        stats.NewModel(),
+		palette:      commandpalette.NewModel(BuildCommands(*theme.Default, wordSource.Lists())),
 	}
 
 	m.typing.SetStyle(typingStyles(*theme.Default))
@@ -62,7 +70,7 @@ func NewModel(
 	m.stats.SetStyle(statsStyles(*theme.Default))
 	m.palette.SetStyle(paletteStyles(*theme.Default))
 
-	return m
+	return m, nil
 }
 
 func (m Model) Init() tea.Cmd {
@@ -253,7 +261,14 @@ func (m Model) onSettings(msg settingsMsg) (tea.Model, tea.Cmd) {
 		m.settings.WordCount = value
 	}
 
-	return m.onRestart()
+	err := m.settingsRepo.UpdateSettings(*m.settings)
+
+	model, cmd := m.onRestart()
+	if err != nil {
+		cmd = tea.Batch(cmd, tea.Printf("error %s", err.Error()))
+	}
+
+	return model, cmd
 }
 
 func (m Model) onPalette() (tea.Model, tea.Cmd) {

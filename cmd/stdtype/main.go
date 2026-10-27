@@ -82,13 +82,13 @@ func NewRootCmd() *cobra.Command {
 				return errors.Wrap(err, "local.NewSettingsRepo")
 			}
 
-			settings, err := settingsRepo.GetSettings()
+			model, err := ui.NewModel(wordSource, statsRepo, settingsRepo)
 			if err != nil {
-				return errors.Wrap(err, "settingsRepo.GetSettings")
+				return errors.Wrap(err, "ui.NewModel")
 			}
 
 			program := tea.NewProgram(
-				ui.NewModel(wordSource, statsRepo, settings),
+				model,
 				tea.WithContext(cmd.Context()),
 				tea.WithoutSignalHandler(),
 			)
