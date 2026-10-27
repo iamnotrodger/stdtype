@@ -77,6 +77,9 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			settingsPath := filepath.Join(configDir, "settings.json")
+			v.SetConfigFile(settingsPath)
+			v.SetConfigType("json")
+
 			settingsRepo, err := local.NewSettingsRepo(v, settingsPath)
 			if err != nil {
 				return errors.Wrap(err, "local.NewSettingsRepo")
