@@ -145,7 +145,7 @@ func TestTextAreaView(t *testing.T) {
 				return sendString(m, "aaa bbb")
 			},
 			want: want{contains: func(s TextAreaStyles) string {
-				return s.Correct.Render("b") + s.Cursor.Inline(true).Reverse(true).Render(" ")
+				return s.Correct.Render("aaa bbb") + s.Cursor.Inline(true).Reverse(true).Render(" ")
 			}},
 		},
 		{
@@ -209,7 +209,7 @@ func TestTextAreaView(t *testing.T) {
 				return sendString(m, "a ")
 			},
 			want: want{contains: func(s TextAreaStyles) string {
-				return s.Correct.Render("a") + s.Incorrect.Render("b") + s.Incorrect.Render("c")
+				return s.Correct.Render("a") + s.Incorrect.Render("bc")
 			}},
 		},
 		{
@@ -233,7 +233,7 @@ func TestTextAreaView(t *testing.T) {
 				return m
 			},
 			want: want{contains: func(TextAreaStyles) string {
-				return animation.FadeStyle(0.5).Render("a")
+				return animation.FadeStyle(0.5).Render("ab")
 			}},
 		},
 	}

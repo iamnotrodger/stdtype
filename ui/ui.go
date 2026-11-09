@@ -40,6 +40,9 @@ type Model struct {
 	screen      screen
 	paletteOpen bool
 
+	err      error
+	errStyle lipgloss.Style
+
 	width, height int
 }
 
@@ -53,16 +56,22 @@ func NewModel(
 		return Model{}, errors.Wrap(err, "settingsRepo.GetSettings")
 	}
 
+	typingModel, err := typing.NewModel(wordSource, &settings)
+	if err != nil {
+		return Model{}, errors.Wrap(err, "typing.NewModel")
+	}
+
 	m := Model{
 		wordSource:   wordSource,
 		statsRepo:    statsRepo,
 		settingsRepo: settingsRepo,
 		settings:     &settings,
 		screen:       screenTyping,
-		typing:       typing.NewModel(wordSource, &settings),
+		typing:       typingModel,
 		result:       result.NewModel(),
 		stats:        stats.NewModel(),
 		palette:      commandpalette.NewModel(BuildCommands(*theme.Default, wordSource.Lists())),
+		errStyle:     lipgloss.NewStyle().Foreground(theme.Default.Error),
 	}
 
 	m.typing.SetStyle(typingStyles(*theme.Default))
@@ -86,7 +95,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case typing.TickMsg:
 		return m.updateTyping(msg)
 	case cursor.BlinkMsg:
-		return m.updateTyping(msg)
+		return m.updateBackground(msg)
 	case animation.Msg:
 		return m.updateTyping(msg)
 	case typing.ResultMsg:
@@ -101,6 +110,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.onNavigate(msg)
 	case settingsMsg:
 		return m.onSettings(msg)
+	case typing.ErrMsg:
+		m.err = msg.Err
+
+		return m, nil
 
 	case tea.KeyPressMsg:
 		switch {
@@ -127,11 +140,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.screen == screenTyping {
-		return m.updateTyping(msg)
-	}
-
-	return m, nil
+	return m.updateBackground(msg)
 }
 
 func (m Model) View() tea.View {
@@ -149,6 +158,19 @@ func (m Model) View() tea.View {
 				X((m.width-paletteWidth)/2).
 				Y(m.height/4).
 				Z(1),
+		)
+	}
+
+	if m.err != nil {
+		errView := m.errStyle.Render("error: " + m.err.Error())
+		errWidth, _ := lipgloss.Size(errView)
+
+		// The row above the footer is blank on every screen.
+		layers = append(layers,
+			lipgloss.NewLayer(errView).
+				X(max((m.width-errWidth)/2, 0)).
+				Y(max(m.height-2, 0)).
+				Z(2),
 		)
 	}
 
@@ -184,11 +206,26 @@ func (m Model) updateStats(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) updatePalette(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) updatePalette(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.palette, cmd = m.palette.Update(msg)
 
 	return m, cmd
+}
+
+// Each component ignores cursor blinks it does not own.
+func (m Model) updateBackground(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var paletteCmd, typingCmd tea.Cmd
+
+	if m.paletteOpen {
+		m.palette, paletteCmd = m.palette.Update(msg)
+	}
+
+	if m.screen == screenTyping {
+		m.typing, typingCmd = m.typing.Update(msg)
+	}
+
+	return m, tea.Batch(paletteCmd, typingCmd)
 }
 
 func (m Model) onResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
@@ -204,9 +241,10 @@ func (m Model) onResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) onComplete(result *stdtype.Result) (tea.Model, tea.Cmd) {
-	err := m.statsRepo.CreateResult(result)
-	if err != nil {
-		tea.Printf("error %s", err.Error())
+	if !result.Invalid {
+		if err := m.statsRepo.CreateResult(result); err != nil {
+			m.err = errors.Wrap(err, "statsRepo.CreateResult")
+		}
 	}
 
 	return m.onResult(result)
@@ -221,12 +259,13 @@ func (m Model) onResult(result *stdtype.Result) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) onRestart() (tea.Model, tea.Cmd) {
+func (m Model) onRestart() (Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	m.typing, cmd = m.typing.Restart()
 	m.screen = screenTyping
 	m.paletteOpen = false
+	m.err = nil
 
 	return m, cmd
 }
@@ -275,12 +314,12 @@ func (m Model) onSettings(msg settingsMsg) (tea.Model, tea.Cmd) {
 
 	err := m.settingsRepo.UpdateSettings(*m.settings)
 
-	model, cmd := m.onRestart()
+	m, cmd := m.onRestart()
 	if err != nil {
-		cmd = tea.Batch(cmd, tea.Printf("error %s", err.Error()))
+		m.err = errors.Wrap(err, "settingsRepo.UpdateSettings")
 	}
 
-	return model, cmd
+	return m, cmd
 }
 
 func (m Model) onPalette() (tea.Model, tea.Cmd) {
@@ -306,7 +345,9 @@ func (m Model) onNavigate(msg navMsg) (tea.Model, tea.Cmd) {
 	if msg.screen == screenStats {
 		results, err := m.statsRepo.ListResults()
 		if err != nil {
-			return m, tea.Printf("error %s", err.Error())
+			m.err = errors.Wrap(err, "statsRepo.ListResults")
+
+			return m, nil
 		}
 
 		m.stats.SetResults(results)

@@ -8,13 +8,16 @@ import (
 
 const FPS = 70
 
-type Msg time.Time
+type Msg struct {
+	ID   int
+	Time time.Time
+}
 
-func Tick() tea.Cmd {
+func Tick(id int) tea.Cmd {
 	return tea.Tick(
 		time.Second/FPS,
 		func(t time.Time) tea.Msg {
-			return Msg(t)
+			return Msg{ID: id, Time: t}
 		},
 	)
 }

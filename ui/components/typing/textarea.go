@@ -57,6 +57,10 @@ type TextArea struct {
 
 	width, height int
 	fade          float64
+
+	cells []cell
+	caret int
+	lines []line
 }
 
 func NewTextArea() TextArea {
@@ -103,6 +107,8 @@ func (m TextArea) onKey(msg tea.KeyPressMsg) TextArea {
 		m.cursor.SetMode(cursor.CursorStatic)
 	}
 
+	m.layout()
+
 	return m
 }
 
@@ -111,14 +117,12 @@ func (m TextArea) View() string {
 		return ""
 	}
 
-	cells, caret := m.cells()
-	lines := wrapLines(cellRunes(cells), m.width)
-	top := scrollTop(lines, m.height, caret)
-	visible := lines[top:min(top+m.height, len(lines))]
+	top := scrollTop(m.lines, m.height, m.caret)
+	visible := m.lines[top:min(top+m.height, len(m.lines))]
 
 	rows := make([]string, 0, m.height)
 	for _, l := range visible {
-		row := m.renderLine(cells[l.start:l.end])
+		row := m.renderLine(m.cells[l.start:l.end])
 		if pad := m.width - lipgloss.Width(row); pad > 0 {
 			row += strings.Repeat(" ", pad)
 		}
@@ -136,11 +140,22 @@ func (m TextArea) View() string {
 func (m *TextArea) SetTest(t *stdtype.TypeTest) {
 	m.test = t
 	m.cursor.SetMode(cursor.CursorBlink)
+	m.layout()
 }
 
 func (m *TextArea) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.layout()
+}
+
+func (m *TextArea) layout() {
+	if m.test == nil {
+		return
+	}
+
+	m.cells, m.caret = m.buildCells()
+	m.lines = wrapLines(cellRunes(m.cells), m.width)
 }
 
 func (m *TextArea) SetFade(v float64) {
@@ -171,7 +186,7 @@ type cell struct {
 	state cellState
 }
 
-func (m TextArea) cells() ([]cell, int) {
+func (m TextArea) buildCells() ([]cell, int) {
 	t := m.test
 	active := t.ActiveWord()
 
@@ -242,28 +257,27 @@ func cellRunes(cells []cell) []rune {
 }
 
 func (m TextArea) renderLine(cells []cell) string {
-	var b strings.Builder
-
 	if m.fade < 1 {
-		fs := animation.FadeStyle(m.fade)
-		for _, c := range cells {
-			b.WriteString(fs.Render(string(c.r)))
-		}
-
-		return b.String()
+		return animation.FadeStyle(m.fade).Render(string(cellRunes(cells)))
 	}
 
-	for _, c := range cells {
-		b.WriteString(m.character(c))
+	var b strings.Builder
+
+	for i := 0; i < len(cells); {
+		j := i + 1
+		for j < len(cells) && cells[j].state == cells[i].state {
+			j++
+		}
+
+		b.WriteString(m.renderRun(cells[i].state, string(cellRunes(cells[i:j]))))
+		i = j
 	}
 
 	return b.String()
 }
 
-func (m TextArea) character(c cell) string {
-	s := string(c.r)
-
-	switch c.state {
+func (m TextArea) renderRun(state cellState, s string) string {
+	switch state {
 	case caret:
 		m.cursor.SetChar(s)
 

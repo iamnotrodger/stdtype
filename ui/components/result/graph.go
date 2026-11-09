@@ -55,10 +55,6 @@ func (m *Graph) SetSize(width, height int) {
 	m.height = height
 }
 
-func (m Graph) Styles() GraphStyles {
-	return m.styles
-}
-
 func (m *Graph) SetStyle(s GraphStyles) {
 	m.styles = s
 }
@@ -90,6 +86,15 @@ func (m Graph) View() string {
 	chart.SetXStep(xStep)
 	chart.SetYStep(rows / yTicks)
 
+	errs := m.samples.Err[:min(len(m.samples.Err), n)]
+	maxErr := slices.Max(append([]int{0}, errs...))
+	if maxErr > 0 {
+		chart.SetY2Axis(linechart.Axis{
+			Max:        float64(maxErr),
+			LabelStyle: m.styles.Err,
+		})
+	}
+
 	chart.SetDataSetLineStyle(rawSet, runes.ArcLineStyle)
 	chart.SetDataSetLineStyle(wpmSet, runes.ArcLineStyle)
 	chart.SetDataSetStyle(rawSet, m.styles.Raw)
@@ -101,27 +106,12 @@ func (m Graph) View() string {
 	}
 
 	chart.DrawBrailleDataSets([]string{rawSet, wpmSet})
-	m.drawErrors(&chart, times)
+	m.drawErrors(&chart, times, errs)
 
 	return chart.View()
 }
 
-// drawErrors marks each second that had errors with a "×" on a right Y axis.
-// Adding that axis narrows the plot, so the lines are redrawn to match.
-func (m Graph) drawErrors(chart *timeserieslinechart.Model, times []time.Time) {
-	errs := m.samples.Err[:min(len(m.samples.Err), len(times))]
-
-	maxErr := slices.Max(append([]int{0}, errs...))
-	if maxErr == 0 {
-		return
-	}
-
-	chart.SetY2Axis(linechart.Axis{
-		Max:        float64(maxErr),
-		LabelStyle: m.styles.Err,
-	})
-	chart.DrawBrailleDataSets([]string{rawSet, wpmSet})
-
+func (m Graph) drawErrors(chart *timeserieslinechart.Model, times []time.Time, errs []int) {
 	for i, e := range errs {
 		if e == 0 {
 			continue

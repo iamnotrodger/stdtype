@@ -74,6 +74,7 @@ type Model struct {
 
 	commands []Command
 	scope    []Command
+	results  []Command
 	cursor   int
 	input    textinput.Model
 
@@ -91,7 +92,7 @@ func NewModel(commands []Command, opts ...Option) Model {
 	input.Placeholder = options.placeholder
 	input.Prompt = promptStr
 
-	return Model{
+	m := Model{
 		KeyMap:     DefaultKeyMap(),
 		commands:   commands,
 		scope:      commands,
@@ -100,6 +101,9 @@ func NewModel(commands []Command, opts ...Option) Model {
 		maxWidth:   options.maxWidth,
 		input:      input,
 	}
+	m.filter()
+
+	return m
 }
 
 func (m *Model) SetStyle(s Styles) {
@@ -115,6 +119,7 @@ func (m *Model) Reset() {
 	m.input.Reset()
 	m.scope = m.commands
 	m.cursor = 0
+	m.filter()
 }
 
 func (m *Model) SetSize(width, _ int) {
@@ -145,6 +150,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	if m.input.Value() != prevQuery {
 		m.cursor = 0
+		m.filter()
 	}
 
 	return m, cmd
@@ -163,6 +169,7 @@ func (m Model) selectCommand() (Model, tea.Cmd) {
 		m.scope = command.Subcommands
 		m.cursor = 0
 		m.input.Reset()
+		m.filter()
 
 		return m, nil
 	}
@@ -213,12 +220,17 @@ func (m Model) Query() string {
 }
 
 func (m Model) Results() []Command {
+	return m.results
+}
+
+func (m *Model) filter() {
 	results := m.scope
 
 	if query := m.input.Value(); strings.TrimSpace(query) != "" {
 		targets := make([]string, len(m.scope))
 		for i, command := range m.scope {
-			targets[i] = strings.Join(append([]string{command.Label}, command.Keywords...), " ")
+			label := ansi.Strip(command.Label)
+			targets[i] = strings.Join(append([]string{label}, command.Keywords...), " ")
 		}
 
 		matches := fuzzy.Find(query, targets)
@@ -228,5 +240,5 @@ func (m Model) Results() []Command {
 		}
 	}
 
-	return results[:min(len(results), m.maxResults)]
+	m.results = results[:min(len(results), m.maxResults)]
 }

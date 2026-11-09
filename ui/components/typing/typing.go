@@ -9,6 +9,8 @@ import (
 	"charm.land/bubbles/v2/cursor"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/pkg/errors"
+
 	stdtype "github.com/iamnotrodger/stdtype"
 	"github.com/iamnotrodger/stdtype/ui/animation"
 	"github.com/iamnotrodger/stdtype/ui/common"
@@ -22,6 +24,18 @@ type TickMsg struct {
 type ResultMsg struct {
 	Result *stdtype.Result
 }
+
+type ErrMsg struct {
+	Err error
+}
+
+func errCmd(err error) tea.Cmd {
+	return func() tea.Msg {
+		return ErrMsg{Err: err}
+	}
+}
+
+const wordBuffer = 30
 
 func tick(id int, elapsed time.Duration) tea.Cmd {
 	next := elapsed.Truncate(time.Second) + time.Second
@@ -72,7 +86,7 @@ type Model struct {
 func NewModel(
 	wordSource stdtype.WordSource,
 	settings *stdtype.Settings,
-) Model {
+) (Model, error) {
 	m := Model{
 		wordSource: wordSource,
 		settings:   settings,
@@ -93,7 +107,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case TickMsg:
 		return m.onTick(msg)
 	case animation.Msg:
-		return m.onAnimate()
+		return m.onAnimate(msg)
 	case tea.KeyPressMsg:
 		return m.onKey(msg)
 	}
@@ -106,7 +120,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	m.textarea.SetFade(m.fade.Value)
-	m.textarea.SetSize(wrapWidth(m.width), clampLines(m.settings.Lines))
 
 	main := lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -176,18 +189,34 @@ func (m *Model) SetStyle(s Styles) {
 func (m *Model) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.textarea.SetSize(wrapWidth(width), clampLines(m.settings.Lines))
 }
 
-func (m Model) reset() Model {
-	mode := stdtype.ParseMode(m.settings.Mode)
+func (m Model) reset() (Model, error) {
+	m.mode = stdtype.ParseMode(m.settings.Mode)
 
 	count := m.settings.WordCount
-	if mode == stdtype.TimeMode {
+	if m.mode == stdtype.TimeMode {
 		count = m.settings.Duration*3 + 30
 	}
 
-	// TODO: log error
-	words, _ := m.wordSource.Generate(
+	words, err := m.generate(count)
+
+	m.test = stdtype.NewTypeTest(words, m.mode)
+	m.samples = stdtype.Samples{}
+	m.prevStats = stdtype.Stats{}
+	m.prevElapsed = 0
+	m.afkSeconds = 0
+	m.tickID++
+
+	m.textarea.SetSize(wrapWidth(m.width), clampLines(m.settings.Lines))
+	m.textarea.SetTest(m.test)
+
+	return m, err
+}
+
+func (m Model) generate(count int) ([]string, error) {
+	words, err := m.wordSource.Generate(
 		count,
 		stdtype.GenerateOptions{
 			List:        m.settings.WordList,
@@ -196,24 +225,36 @@ func (m Model) reset() Model {
 		},
 	)
 
-	m.mode = stdtype.ParseMode(m.settings.Mode)
-	m.test = stdtype.NewTypeTest(words, m.mode)
-	m.samples = stdtype.Samples{}
-	m.prevStats = stdtype.Stats{}
-	m.prevElapsed = 0
-	m.afkSeconds = 0
-	m.tickID++
+	return words, errors.Wrap(err, "wordSource.Generate")
+}
 
-	m.textarea.SetTest(m.test)
+func (m Model) extendWords() tea.Cmd {
+	if m.mode != stdtype.TimeMode || len(m.test.Words)-m.test.ActiveWord() > wordBuffer {
+		return nil
+	}
 
-	return m
+	words, err := m.generate(wordBuffer)
+	if err != nil {
+		return errCmd(err)
+	}
+
+	for _, w := range words {
+		m.test.Words = append(m.test.Words, []rune(w))
+	}
+
+	return nil
 }
 
 func (m Model) Restart() (Model, tea.Cmd) {
-	m = m.reset()
+	m, err := m.reset()
 	m.fade.Start()
 
-	return m, tea.Batch(animation.Tick(), cursor.Blink)
+	cmd := tea.Batch(animation.Tick(m.tickID), cursor.Blink)
+	if err != nil {
+		cmd = tea.Batch(cmd, errCmd(err))
+	}
+
+	return m, cmd
 }
 
 func (m Model) onTick(msg TickMsg) (Model, tea.Cmd) {
@@ -266,9 +307,11 @@ func wpm(chars int, secs float64) float64 {
 
 func (m Model) onKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	wasStarted := m.test.Started()
+	extendCmd := m.extendWords()
 
 	var cmd tea.Cmd
 	m.textarea, cmd = m.textarea.Update(msg)
+	cmd = tea.Batch(cmd, extendCmd)
 
 	if !m.test.Finished() && m.test.Completed() {
 		return m.onFinish()
@@ -292,9 +335,8 @@ func (m Model) onFinish() (Model, tea.Cmd) {
 	stats := stdtype.ComputeStats(m.test)
 	consistency := stdtype.Consistency(m.samples.Raw)
 
-	mode := stdtype.ParseMode(m.settings.Mode)
 	amount := m.settings.Duration
-	if mode == stdtype.WordsMode {
+	if m.mode == stdtype.WordsMode {
 		amount = m.settings.WordCount
 	}
 
@@ -318,9 +360,13 @@ func (m Model) onFinish() (Model, tea.Cmd) {
 	}
 }
 
-func (m Model) onAnimate() (Model, tea.Cmd) {
+func (m Model) onAnimate(msg animation.Msg) (Model, tea.Cmd) {
+	if msg.ID != m.tickID {
+		return m, nil
+	}
+
 	if m.fade.Update() {
-		return m, animation.Tick()
+		return m, animation.Tick(m.tickID)
 	}
 
 	return m, nil

@@ -9,6 +9,7 @@ import (
 	stdtype "github.com/iamnotrodger/stdtype"
 	commandpalette "github.com/iamnotrodger/stdtype/ui/components/commadpalette"
 	"github.com/iamnotrodger/stdtype/ui/components/stats"
+	"github.com/iamnotrodger/stdtype/ui/components/typing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,6 +54,34 @@ func TestFinishTest(t *testing.T) {
 
 		assert.Equal(t, screenResult, m.screen)
 		assert.Len(t, repo.results, 1)
+	})
+
+	t.Run("should not save result when invalid", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &fakeStatsRepo{}
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
+		require.NoError(t, err)
+
+		m, _ = update(m, typing.ResultMsg{Result: &stdtype.Result{Invalid: true, InvalidReason: "afk detected"}})
+
+		assert.Equal(t, screenResult, m.screen)
+		assert.Empty(t, repo.results)
+	})
+
+	t.Run("should show error when result cannot be saved", func(t *testing.T) {
+		t.Parallel()
+
+		repo := &fakeStatsRepo{err: errDiskFull}
+		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
+		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
+		require.NoError(t, err)
+		m, _ = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
+
+		m, _ = update(m, typing.ResultMsg{Result: &stdtype.Result{Mode: "words", Amount: 2}})
+
+		assert.Contains(t, ansi.Strip(m.View().Content), errDiskFull.Error())
 	})
 
 	t.Run("should show result without saving when picked from stats", func(t *testing.T) {
@@ -205,18 +234,19 @@ func TestNavigate(t *testing.T) {
 		assert.Contains(t, ansi.Strip(m.View().Content), "87")
 	})
 
-	t.Run("should stay on current screen when results fail to load", func(t *testing.T) {
+	t.Run("should stay on current screen and show error when results fail to load", func(t *testing.T) {
 		t.Parallel()
 
 		repo := &fakeStatsRepo{err: errDiskFull}
 		settingsRepo := &fakeSettingsRepo{settings: stdtype.Settings{Mode: "words", WordCount: 2}}
 		m, err := NewModel(fixedWords{"ab", "cd"}, repo, settingsRepo)
 		require.NoError(t, err)
+		m, _ = update(m, tea.WindowSizeMsg{Width: 120, Height: 40})
 
-		m, cmd := update(m, navMsg{screen: screenStats})
+		m, _ = update(m, navMsg{screen: screenStats})
 
 		assert.Equal(t, screenTyping, m.screen)
-		assert.NotNil(t, cmd)
+		assert.Contains(t, ansi.Strip(m.View().Content), errDiskFull.Error())
 	})
 }
 

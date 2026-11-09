@@ -1,11 +1,14 @@
 package typing
 
 import (
+	"errors"
+	"slices"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	stdtype "github.com/iamnotrodger/stdtype"
+	"github.com/iamnotrodger/stdtype/ui/animation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +20,7 @@ func TestFinish(t *testing.T) {
 		t.Parallel()
 
 		settings := stdtype.Settings{Mode: "words", WordCount: 2}
-		m := NewModel(fixedWords{"ab", "cd"}, &settings)
+		m := newModel(t, &settings)
 
 		_, cmd := typeString(m, "ab cd")
 
@@ -33,7 +36,7 @@ func TestFinish(t *testing.T) {
 		t.Parallel()
 
 		settings := stdtype.Settings{Mode: "words", WordCount: 2}
-		m := NewModel(fixedWords{"ab", "cd"}, &settings)
+		m := newModel(t, &settings)
 		m, _ = typeString(m, "ab cd")
 
 		_, cmd := typeString(m, "x")
@@ -47,7 +50,7 @@ func TestFinish(t *testing.T) {
 		// Zero duration makes the first tick after starting the deadline,
 		// since the test clock can't be injected from this package.
 		settings := stdtype.Settings{Mode: "time", Duration: 0}
-		m := NewModel(fixedWords{"ab", "cd"}, &settings)
+		m := newModel(t, &settings)
 		m, _ = typeString(m, "a")
 
 		_, cmd := m.Update(TickMsg{ID: m.tickID})
@@ -114,7 +117,7 @@ func TestTick(t *testing.T) {
 			t.Parallel()
 
 			settings := stdtype.Settings{Mode: "words", WordCount: 2}
-			m := NewModel(fixedWords{"ab", "cd"}, &settings)
+			m := newModel(t, &settings)
 
 			m, msg := tt.modelFunc(m)
 
@@ -133,7 +136,7 @@ func TestTickChainStart(t *testing.T) {
 		t.Parallel()
 
 		settings := stdtype.Settings{Mode: "words", WordCount: 2}
-		m := NewModel(fixedWords{"ab", "cd"}, &settings)
+		m := newModel(t, &settings)
 
 		_, cmd := typeString(m, "a")
 
@@ -144,7 +147,7 @@ func TestTickChainStart(t *testing.T) {
 		t.Parallel()
 
 		settings := stdtype.Settings{Mode: "words", WordCount: 2}
-		m := NewModel(fixedWords{"ab", "cd"}, &settings)
+		m := newModel(t, &settings)
 		m, _ = typeString(m, "a")
 
 		_, cmd := typeString(m, "b")
@@ -179,7 +182,7 @@ func TestModelView(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			m := NewModel(fixedWords{"ab", "cd"}, &tt.settings)
+			m := newModel(t, &tt.settings)
 			m.SetSize(80, 24)
 
 			m, _ = typeString(m, tt.typed)
@@ -190,6 +193,107 @@ func TestModelView(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTimeModeWords(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should add words when typist nears the end in time mode", func(t *testing.T) {
+		t.Parallel()
+
+		settings := stdtype.Settings{Mode: "time", Duration: 30}
+		m := newModel(t, &settings)
+		before := len(m.test.Words)
+
+		m, _ = typeString(m, "a")
+
+		assert.Greater(t, len(m.test.Words), before)
+	})
+
+	t.Run("should keep word count fixed in words mode", func(t *testing.T) {
+		t.Parallel()
+
+		settings := stdtype.Settings{Mode: "words", WordCount: 2}
+		m := newModel(t, &settings)
+
+		m, _ = typeString(m, "a")
+
+		assert.Len(t, m.test.Words, 2)
+	})
+}
+
+func TestRestart(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should ignore fade frames from before the restart", func(t *testing.T) {
+		t.Parallel()
+
+		settings := stdtype.Settings{Mode: "words", WordCount: 2}
+		m := newModel(t, &settings)
+		m, _ = m.Restart()
+		stale := animation.Msg{ID: m.tickID}
+		m, _ = m.Restart()
+		fade := m.fade.Value
+
+		m, cmd := m.Update(stale)
+
+		assert.Nil(t, cmd)
+		assert.InDelta(t, fade, m.fade.Value, 0)
+	})
+
+	t.Run("should send ErrMsg when words cannot be generated", func(t *testing.T) {
+		t.Parallel()
+
+		settings := stdtype.Settings{Mode: "words", WordCount: 2}
+		m := newModel(t, &settings)
+		m.wordSource = failingWords{}
+
+		_, cmd := m.Restart()
+
+		isErr := func(msg tea.Msg) bool {
+			_, ok := msg.(ErrMsg)
+
+			return ok
+		}
+		assert.True(t, slices.ContainsFunc(runBatch(cmd), isErr))
+	})
+}
+
+func newModel(t *testing.T, settings *stdtype.Settings) Model {
+	t.Helper()
+
+	m, err := NewModel(fixedWords{"ab", "cd"}, settings)
+	require.NoError(t, err)
+
+	return m
+}
+
+func runBatch(cmd tea.Cmd) []tea.Msg {
+	msg := runCmd(cmd)
+
+	batch, ok := msg.(tea.BatchMsg)
+	if !ok {
+		return []tea.Msg{msg}
+	}
+
+	var msgs []tea.Msg
+	for _, c := range batch {
+		msgs = append(msgs, runBatch(c)...)
+	}
+
+	return msgs
+}
+
+var errNoWords = errors.New("no words")
+
+type failingWords struct{}
+
+func (failingWords) Generate(int, stdtype.GenerateOptions) ([]string, error) {
+	return nil, errNoWords
+}
+
+func (failingWords) Lists() []string {
+	return nil
 }
 
 type fixedWords []string

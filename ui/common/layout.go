@@ -6,11 +6,9 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
 	"github.com/iamnotrodger/stdtype/ui/keys"
-	"github.com/iamnotrodger/stdtype/ui/theme"
 )
 
 type Layout struct {
-	Style  theme.ColorStyle
 	Header string
 	Main   string
 	Footer string
@@ -20,7 +18,7 @@ type Layout struct {
 
 func (l Layout) View() string {
 	head := lipgloss.PlaceHorizontal(l.Width, lipgloss.Center, l.Header)
-	foot := lipgloss.PlaceHorizontal(l.Width, lipgloss.Center, l.GetFooter())
+	foot := lipgloss.PlaceHorizontal(l.Width, lipgloss.Center, l.Footer)
 
 	main := l.Main
 
@@ -32,14 +30,6 @@ func (l Layout) View() string {
 	mid := lipgloss.Place(l.Width, height, lipgloss.Center, lipgloss.Center, main)
 
 	return lipgloss.JoinVertical(lipgloss.Left, head, mid, foot)
-}
-
-func (l Layout) GetFooter() string {
-	if l.Footer == "" {
-		return l.Style.Faint.Render(DefaultFooter())
-	}
-
-	return l.Footer
 }
 
 func DefaultFooter() string {

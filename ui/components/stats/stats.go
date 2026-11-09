@@ -14,6 +14,11 @@ import (
 	"github.com/iamnotrodger/stdtype/ui/common"
 )
 
+const (
+	maxTableHeight = 15
+	minTableHeight = 3
+)
+
 // ResultMsg is sent when a result is selected.
 type ResultMsg struct {
 	Result *stdtype.Result
@@ -84,7 +89,7 @@ func NewModel() Model {
 		table.WithColumns(columns),
 		table.WithFocused(true),
 		table.WithWidth(tableWidth),
-		table.WithHeight(15),
+		table.WithHeight(maxTableHeight),
 	)
 
 	m := Model{
@@ -103,6 +108,14 @@ func (m *Model) SetStyle(s Styles) {
 
 func (m *Model) SetSize(width, height int) {
 	m.width, m.height = width, height
+	m.table.SetHeight(tableHeight(height))
+}
+
+// tableHeight fits the table under the header, summary, gap and footer.
+func tableHeight(height int) int {
+	const reserved = 6
+
+	return min(maxTableHeight, max(height-reserved, minTableHeight))
 }
 
 func (m *Model) SetResults(results []*stdtype.Result) {
@@ -153,7 +166,7 @@ func (m Model) View() string {
 	main := lipgloss.JoinVertical(
 		lipgloss.Left,
 		m.renderSummary(),
-		"\n\n",
+		"\n",
 		m.table.View(),
 	)
 
